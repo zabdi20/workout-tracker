@@ -145,7 +145,7 @@ fake PR. Charts convert for display only.
 - **BodyweightEntry** — `id · date · weight · unit`
 - **Goal** — `id · type · exerciseId? · targetValue · targetReps? · unit? · targetDate? · createdAt · achievedAt?`
   where `type` is `lift_1rm | lift_weight_reps | bodyweight | frequency`
-- **Settings** (singleton) — `unitPreference · defaultRestSeconds · lastBackupAt`
+- **Settings** (singleton) — `unitPreference · defaultRestSeconds · lastBackupAt · restAlertSound`
 
 `BodyweightEntry` and `Goal` tables are created by the v1 schema, but their UI ships in
 v2. Defining them now keeps the backup format stable across the v1 → v2 boundary.
@@ -219,25 +219,36 @@ whenever the document becomes hidden** — switching apps or manually locking th
 both drop it — and it is not restored automatically. The app must re-acquire on
 `visibilitychange` when it becomes visible again. Coverage is therefore:
 
-| Situation                        | Wake Lock  | Covered by      |
-| -------------------------------- | ---------- | --------------- |
-| Phone visible, app open          | holds      | Wake Lock       |
-| User switches to another app     | released   | audio cue only  |
-| User locks the phone             | released   | audio cue only  |
+| Situation                    | Wake Lock | Covered by                         |
+| ---------------------------- | --------- | ---------------------------------- |
+| Phone visible, app open      | holds     | Wake Lock + foreground tone        |
+| User switches to another app | released  | background audio keepalive only    |
+| User locks the phone         | released  | background audio keepalive only    |
 
-**Secondary mechanism (spike first): background audio cue.** iOS permits web audio to
-continue while backgrounded provided playback is already running. The approach is to
-start a silent looping track when rest begins and play the alert tone at the end,
-which reaches the user through earbuds — often preferable to a haptic in a gym.
+**Second mechanism (v1): audible alert.** Both alerting mechanisms ship in v1. The
+audible alert has two tiers, differing sharply in risk:
 
-This is the only mechanism covering the app-switch case, which is common (users switch
-to a music app mid-rest), so it carries real weight. It is nonetheless **unproven on
-device** and gated behind a spike (see Open questions) for two reasons: it may
-interrupt or duck the user's own music, which would be worse than the problem it
-solves; and background-audio survival has been fragile across iOS releases. Recent
-Safari exposes `navigator.audioSession`, which should permit requesting an
-ambient/mixing category rather than seizing the audio session — this needs verifying,
-not assuming.
+*Foreground tone* — when the document is visible, play a tone on timer completion.
+Nothing to prove; this works and is unconditional in v1.
+
+*Background reach* — iOS permits web audio to continue while backgrounded provided
+playback is already running. Starting a silent looping track when rest begins keeps
+the audio session alive so the tone still fires after the user switches apps, reaching
+them through earbuds — often preferable to a haptic in a gym. This is the **only**
+mechanism covering the app-switch and locked cases, so it carries real weight.
+
+The keepalive technique is **unproven on this device** and its extent is settled by
+Spike 1 (see Open questions), for two reasons: background-audio survival has been
+fragile across iOS releases; and it may interrupt or duck the user's own music, which
+would be worse than the problem it solves. Recent Safari exposes
+`navigator.audioSession`, which should permit requesting an ambient/mixing category
+rather than seizing the audio session — this needs verifying, not assuming. The same
+mixing question applies in milder form to the foreground tone.
+
+The spike determines how far sound reaches, not whether sound exists. A negative
+result narrows coverage to the foreground tone; it does not remove the feature.
+
+Settings carries a `restAlertSound` toggle so the alert can be silenced outright.
 
 **Rejected: Web Push.** iOS 16.4+ does support Web Push for home-screen-installed
 PWAs, including while locked. It is rejected because pushes must originate from a
@@ -262,6 +273,8 @@ basement, the exact environment where it must work.
 - Active session logging across all six measurement types, with last-time reference
 - Rest timer, timestamp-based, with Screen Wake Lock and re-acquisition on
   `visibilitychange`
+- Audible rest alert: foreground tone unconditionally, plus background audio keepalive
+  to the extent Spike 1 shows it survives. Silenceable via `restAlertSound`.
 - History browse **and editing of past sessions**
 - PR detection and badges
 - Backup export / import, prompting when `lastBackupAt` is more than 14 days old
@@ -334,12 +347,15 @@ Implementation follows TDD.
 
 ## Open questions
 
-### Spike 1 — background audio cue (do this first)
+### Spike 1 — how far does the rest alert reach? (do this first)
 
-**Question:** can a PWA reliably play an alert tone after the user switches to another
-app, without disrupting their music?
+**Question:** can a PWA play an alert tone after the user switches to another app or
+locks the phone, and does doing so disrupt their music?
 
-**Why it is first:** it is the only mechanism covering the app-switch and
+The foreground tone is not in question and needs no spike. What is in question is the
+silent-loop keepalive that extends the tone's reach past backgrounding.
+
+**Why it is first:** the keepalive is the only mechanism covering the app-switch and
 screen-locked cases, and its answer cannot be obtained from documentation — it depends
 on the behaviour of a specific iOS version on a real device. Learning the answer costs
 roughly an hour now and considerably more once the session UI exists and would have to
@@ -351,15 +367,18 @@ foregrounded; app switched away; phone locked; and all of the above with Spotify
 playing. Also test whether `navigator.audioSession` type `ambient` permits mixing
 rather than interrupting.
 
-**Outcomes:**
+**Outcomes** (pre-committed, so the result is not relitigated later):
 
-- *Works and mixes cleanly* → adopt as a v1 companion to Wake Lock.
-- *Works but interrupts music* → offer as an off-by-default setting; interrupting the
-  user's music without consent is worse than the missed alert.
-- *Does not survive backgrounding* → Wake Lock alone, and the app-switch case is
-  documented as unsupported.
+- *Survives backgrounding and mixes cleanly* → keepalive on by default. Full coverage.
+- *Survives but interrupts music* → keepalive ships **off by default**, behind an
+  explicit "alert me when the app is closed (interrupts music)" setting. Hijacking the
+  user's music without consent is worse than a missed alert. The foreground tone is
+  unaffected and stays on.
+- *Does not survive backgrounding* → foreground tone and Wake Lock only; the
+  app-switch and locked cases are documented as unsupported.
 
-No production code depends on the outcome; only the alerting layer changes.
+In every outcome the rest alert exists and v1 ships. Only its reach varies, and only
+the alerting layer changes — no other production code depends on the result.
 
 ### Deferred
 
