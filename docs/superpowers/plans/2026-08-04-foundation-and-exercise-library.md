@@ -10,7 +10,9 @@
 
 **Source spec:** `docs/superpowers/specs/2026-08-04-workout-tracker-design.md`
 
-**Scope:** This is Plan 1 of 4. It ends with an app that installs to the iPhone home screen, works offline, and provides the full exercise library. Routines, cycles, session logging, and backup are Plans 2–4.
+**Scope:** This is Plan 1 of 4. It ends with an app deployed to `https://hshadic.github.io/workout-tracker/`, installed on the iPhone home screen, working offline, providing the full exercise library. Routines, cycles, session logging, and backup are Plans 2–4.
+
+**Hosting:** GitHub Pages, project repo `hshadic/workout-tracker`, served from the subpath `/workout-tracker/`. Deployment lands in Task 4 rather than at the end of the plan, because the development machine's network blocks phone-to-PC traffic and a published origin is the only way to reach the device.
 
 ## Global Constraints
 
@@ -60,6 +62,7 @@ If `node` is still not found, log out and back in, or add `C:\Program Files\node
 | `docs/superpowers/spikes/2026-08-04-rest-alert-reach.md` | Written result of the spike. The decision record. |
 | `package.json`, `tsconfig.json`, `vite.config.ts`, `index.html` | Build and test configuration. |
 | `.gitignore`, `.gitattributes` | Ignore rules; forces LF line endings to stop CRLF churn. |
+| `.github/workflows/deploy.yml` | Builds, tests, and publishes to GitHub Pages on push to `main`. |
 | `scripts/make-icons.mjs` | Generates PWA PNG icons using only Node builtins. Run once. |
 | `scripts/build-exercises.ts` | I/O only: reads vendored source JSON, calls mapping, writes bundled JSON. |
 | `src/data/mapping.ts` | **Pure.** Maps `free-exercise-db` records to our schema. Unit-tested. |
@@ -733,7 +736,14 @@ import react from '@vitejs/plugin-react';
 import { VitePWA } from 'vite-plugin-pwa';
 import basicSsl from '@vitejs/plugin-basic-ssl';
 
+// GitHub Pages serves a project repo from a subpath, not the domain root.
+// Vite's base, the manifest's start_url and scope, and the service worker
+// scope must all agree on it. A mismatch produces the worst failure mode:
+// the app installs successfully and then fails to load offline.
+const BASE = '/workout-tracker/';
+
 export default defineConfig({
+  base: BASE,
   plugins: [
     react(),
     basicSsl(),
@@ -748,8 +758,10 @@ export default defineConfig({
         background_color: '#111111',
         display: 'standalone',
         orientation: 'portrait',
-        start_url: '/',
+        start_url: BASE,
+        scope: BASE,
         icons: [
+          // Relative to the manifest, which is served from BASE.
           { src: 'icon-192.png', sizes: '192x192', type: 'image/png' },
           { src: 'icon-512.png', sizes: '512x512', type: 'image/png' },
           { src: 'icon-512-maskable.png', sizes: '512x512', type: 'image/png', purpose: 'maskable' },
@@ -757,6 +769,7 @@ export default defineConfig({
       },
       workbox: {
         globPatterns: ['**/*.{js,css,html,json,png,woff2}'],
+        navigateFallback: `${BASE}index.html`,
       },
     }),
   ],
@@ -802,15 +815,15 @@ Expected: type-check passes, and the output lists `dist/sw.js` and `dist/manifes
 Run: `npm test`
 Expected: PASS — all 5 tests pass (1 from Task 2, 4 from this task).
 
-- [ ] **Step 10: Install it on the iPhone**
+- [ ] **Step 10: Verify locally**
 
-Run: `npm run dev:lan`
+Run: `npm run dev`
 
-Note the `https://192.168.x.x:5173` address printed. On the iPhone, open that address in Safari. Because the certificate is self-signed, Safari shows a warning: tap **Show Details → visit this website** to accept it. Accepting makes the origin a secure context, which service workers and Wake Lock require.
+Open `https://localhost:5173/workout-tracker/` on this machine. Note the subpath — with `base` set, the app is no longer at the root, and dev now matches production exactly.
 
-Then tap **Share → Add to Home Screen**, and open the app from the new icon.
+Expected: the page renders "Workout Tracker". In DevTools → Application, the manifest is detected and a service worker is registered with scope `/workout-tracker/`.
 
-Expected: the app opens without Safari browser chrome, showing "Workout Tracker", and the dumbbell icon appears on the home screen.
+**Do not install on the iPhone yet.** The residential network this machine is on (`2929_ResidentWifi`, classified Public) uses client isolation, so the phone cannot reach a dev server here. Task 4 publishes to a stable HTTPS URL and every device test from then on uses it. Installing now from a temporary LAN address would create a PWA bound to an origin that disappears — and reinstalling from a different origin starts with an empty database.
 
 - [ ] **Step 11: Commit**
 
@@ -828,7 +841,138 @@ HTTP is not."
 
 ---
 
-## Task 4: Database schema
+## Task 4: Deploy to GitHub Pages
+
+**This task publishes code to a public URL under the user's GitHub account.** It requires an explicit go-ahead and two manual steps only the account owner can perform.
+
+**Files:**
+- Create: `.github/workflows/deploy.yml`
+
+**Interfaces:**
+- Consumes: the production build configured in Task 3.
+- Produces: a stable public HTTPS origin, `https://hshadic.github.io/workout-tracker/`. Every device verification from Task 5 onward uses it in place of a LAN address.
+
+This sits here rather than at the end of the plan because the development machine's network (`2929_ResidentWifi`, Public, client-isolated) blocks phone-to-PC traffic. A published origin is the only way to get the app onto the iPhone at all, so it has to exist before any remaining task can be verified on device.
+
+- [ ] **Step 1: Rename the default branch**
+
+```bash
+git branch -M main
+```
+
+`git init` created this repo as `master`; GitHub and the workflow below both assume `main`.
+
+- [ ] **Step 2: Write the deploy workflow**
+
+Create `.github/workflows/deploy.yml`:
+
+```yaml
+name: Deploy to GitHub Pages
+
+on:
+  push:
+    branches: [main]
+  workflow_dispatch:
+
+permissions:
+  contents: read
+  pages: write
+  id-token: write
+
+# Never let two deploys race; the most recent one wins.
+concurrency:
+  group: pages
+  cancel-in-progress: true
+
+jobs:
+  build:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '24'
+          cache: npm
+      - run: npm ci
+      # Tests gate the deploy: a red suite must never reach the phone.
+      - run: npm test
+      - run: npm run build
+      - uses: actions/configure-pages@v5
+      - uses: actions/upload-pages-artifact@v3
+        with:
+          path: dist
+
+  deploy:
+    needs: build
+    runs-on: ubuntu-latest
+    environment:
+      name: github-pages
+      url: ${{ steps.deployment.outputs.page_url }}
+    steps:
+      - id: deployment
+        uses: actions/deploy-pages@v4
+```
+
+- [ ] **Step 3: Create the repository (manual — account owner only)**
+
+At <https://github.com/new>, create a repository named exactly `workout-tracker`, visibility **Public**, with no README, `.gitignore` or licence — the local repo already has history and GitHub-generated files would conflict with the first push.
+
+The repository name must match the `BASE` constant in `vite.config.ts`. Changing one without the other breaks offline loading.
+
+Public is required because GitHub Pages on a private repository needs a paid plan. Only source code is published; training data lives in on-device IndexedDB and never reaches GitHub.
+
+- [ ] **Step 4: Push**
+
+```bash
+git remote add origin https://github.com/hshadic/workout-tracker.git && git push -u origin main
+```
+
+Expected: the push succeeds and commits appear on GitHub. Authentication prompts for a browser sign-in or a personal access token.
+
+- [ ] **Step 5: Enable Pages (manual)**
+
+In the repository: **Settings → Pages → Build and deployment → Source: GitHub Actions**.
+
+- [ ] **Step 6: Verify the deployment**
+
+Watch the run under the repository's **Actions** tab.
+
+Expected: both the `build` and `deploy` jobs pass. If `npm test` fails, the deploy is correctly blocked — fix the tests rather than removing the gate.
+
+Then confirm the site is live:
+
+```bash
+curl -sSI https://hshadic.github.io/workout-tracker/ | head -1
+```
+
+Expected: `HTTP/2 200`. The first deploy can take a few minutes to propagate.
+
+- [ ] **Step 7: Install on the iPhone**
+
+On the phone, open `https://hshadic.github.io/workout-tracker/` in Safari. Real HTTPS, no certificate warning, and it works on any network — including the residential one that blocks LAN access.
+
+Tap **Share → Add to Home Screen**, then launch it from the icon.
+
+Expected: opens without Safari chrome and shows "Workout Tracker", with the dumbbell icon on the home screen. Then enable Airplane Mode and relaunch — it still loads, proving the service worker is caching correctly.
+
+This is the origin the app keeps permanently. Everything installed from here survives updates.
+
+- [ ] **Step 8: Commit**
+
+```bash
+git add .github && git commit -m "ci: deploy to GitHub Pages on push to main
+
+Tests gate the deploy so a failing suite cannot reach the phone.
+
+A published origin is required rather than optional: a PWA is bound to
+the origin it was installed from, so installing from a temporary LAN
+address would produce an app that cannot update and whose database is
+lost on reinstall." && git push
+```
+
+---
+
+## Task 5: Database schema
 
 **Files:**
 - Create: `src/db/types.ts`, `src/db/db.ts`, `src/db/db.test.ts`
@@ -1170,7 +1314,7 @@ hottest query: the last-time reference shown on every set."
 
 ---
 
-## Task 5: Exercise dataset transform
+## Task 6: Exercise dataset transform
 
 **Files:**
 - Create: `vendor/free-exercise-db.json` (downloaded, committed)
@@ -1547,7 +1691,7 @@ No images are bundled, per the spec."
 
 ---
 
-## Task 6: Seeding and exercise queries
+## Task 7: Seeding and exercise queries
 
 **Files:**
 - Create: `src/db/exercises.ts`, `src/db/exercises.test.ts`
@@ -1903,7 +2047,7 @@ orphan every logged set referencing them."
 
 ---
 
-## Task 7: Library screen with search
+## Task 8: Library screen with search
 
 **Files:**
 - Create: `src/domain/exerciseFilter.ts`, `src/domain/exerciseFilter.test.ts`
@@ -2398,7 +2542,7 @@ looking functional while writing to nothing."
 
 ---
 
-## Task 8: Muscle and equipment filters
+## Task 9: Muscle and equipment filters
 
 **Files:**
 - Create: `src/ui/library/FilterSheet.tsx`
@@ -2606,7 +2750,7 @@ category are OR; across categories they are AND."
 
 ---
 
-## Task 9: Create and edit custom exercises
+## Task 10: Create and edit custom exercises
 
 **Files:**
 - Create: `src/ui/library/CustomExerciseForm.tsx`, `src/ui/library/CustomExerciseForm.test.tsx`
@@ -2907,9 +3051,13 @@ Expected: type-check and build succeed with no errors.
 
 - [ ] **Step 7: Verify on the iPhone**
 
-Run: `npm run dev:lan`
+Push to `main` so the deploy workflow publishes the current build:
 
-On the phone, open the app from the home-screen icon (installed in Task 3). Confirm:
+```bash
+git push
+```
+
+Wait for the Actions run to go green, then open the app from the home-screen icon installed in Task 4. Pull down to refresh once so the service worker picks up the new build. Confirm:
 
 1. The exercise library loads and shows a count in the hundreds.
 2. Searching narrows the list.
@@ -2933,7 +3081,8 @@ deletion, since deleting would orphan logged sets."
 
 - [ ] `npm test` passes with no failures.
 - [ ] `npm run build` completes with no type errors.
-- [ ] The app is installed on the iPhone home screen and opens without browser chrome.
+- [ ] The GitHub Actions deploy workflow is green and `https://hshadic.github.io/workout-tracker/` returns 200.
+- [ ] The app is installed on the iPhone home screen from that URL and opens without browser chrome.
 - [ ] The library loads offline in Airplane Mode.
 - [ ] A custom exercise survives closing and reopening the app.
 - [ ] `docs/superpowers/spikes/2026-08-04-rest-alert-reach.md` records a decision, ready for Plan 3.
@@ -2942,4 +3091,4 @@ deletion, since deleting would orphan logged sets."
 
 Routines, cycles, the Today screen, session logging, the rest timer, history, PR detection, charts, backup export/import, and the Playwright round-trip test. These are Plans 2–4.
 
-Also deferred: the **units setting UI**. The `Settings` entity and its `unitPreference` field are created here (Task 4), but nothing in this plan displays a weight, so a settings screen would have nothing to affect. It lands in Plan 3 alongside set logging, which is the first thing that reads it.
+Also deferred: the **units setting UI**. The `Settings` entity and its `unitPreference` field are created here (Task 5), but nothing in this plan displays a weight, so a settings screen would have nothing to affect. It lands in Plan 3 alongside set logging, which is the first thing that reads it.

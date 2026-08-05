@@ -23,7 +23,8 @@ Accepted consequences:
 
 - No Apple Watch app.
 - No HealthKit integration.
-- No App Store distribution; installed via Safari "Add to Home Screen".
+- No App Store distribution; installed via Safari "Add to Home Screen" from
+  <https://hshadic.github.io/workout-tracker/>.
 - iOS reclaims web storage more aggressively than native app storage, which
   promotes backup/export from a nice-to-have to a v1 requirement.
 - No haptic alerts. The Vibration API is unsupported in iOS Safari, which constrains
@@ -39,6 +40,27 @@ state management becomes a homegrown framework at this size). React wins on ecos
 for the two things this app needs: a fast list/form UI and decent charts.
 
 **No backend.** No server, no accounts, no sync, no recurring cost. All data is local.
+
+**Hosting: GitHub Pages**, project repo `hshadic/workout-tracker`, served from the
+subpath `/workout-tracker/`. This is static file hosting, not a backend — it serves the
+app and never sees training data.
+
+A stable HTTPS origin is required infrastructure, not deployment polish. A PWA is bound
+to the origin it was installed from: its database, its service worker scope and its
+update channel are all keyed to it. Installing from a temporary LAN address would
+produce an app that cannot update and whose history is lost on reinstall — the exact
+failure this design otherwise works hard to prevent. A local dev server is additionally
+unworkable here because the development machine sits on a client-isolated residential
+network that blocks phone-to-PC traffic entirely.
+
+The consequence is that the repository is public, since GitHub Pages on a private
+repository requires a paid plan. Only source code is published. Training data lives in
+on-device IndexedDB and is never transmitted anywhere.
+
+Because Pages serves a project repo from a subpath, Vite's `base`, the manifest's
+`start_url` and `scope`, and the service worker scope must all agree on
+`/workout-tracker/`. A mismatch produces the worst failure mode available: the app
+installs successfully and then fails to load offline.
 
 ### Modules
 
