@@ -261,11 +261,18 @@ basement, the exact environment where it must work.
 
 ### v1 — the spine
 
-- Bundled exercise library of roughly 150–250 exercises, sourced from
-  `free-exercise-db` (public domain) and re-tagged to this schema's muscle, equipment
-  and `measurementType` vocabularies. The source set is larger; it is trimmed to
-  common gym movements to keep search usable and the bundle small. Images are not
-  bundled.
+- Bundled exercise library of roughly 590 exercises, sourced from `free-exercise-db`
+  (public domain) and re-tagged to this schema's muscle, equipment and
+  `measurementType` vocabularies. The source set holds 873; filtering to strength,
+  powerlifting and olympic categories with mappable equipment yields 587. Images are
+  not bundled; instructions are.
+
+  An earlier draft of this spec called for 150–250 on the assumption that a larger
+  list would be unwieldy and heavy. Measurement contradicted both halves: the
+  bundle is 102 KB gzipped with instructions included, which is negligible for a
+  one-time offline cache, and search plus muscle/equipment filters keep the list
+  navigable at that size. Hand-curating ~590 entries would be a poor use of effort
+  for a single-user app, so the natural filter output is kept as-is.
 - Search and filter by muscle and equipment
 - Custom exercises, identical in shape to bundled ones
 - Routine create / edit / reorder

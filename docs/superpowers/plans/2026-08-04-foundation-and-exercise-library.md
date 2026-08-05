@@ -24,7 +24,7 @@
 - **Tests are colocated** with source as `*.test.ts` / `*.test.tsx`.
 - **TDD is required.** Write the failing test, watch it fail, implement, watch it pass, commit.
 - **Testing balance** (interpreting the spec's "RTL on Active Session only"): pure logic gets thorough unit tests; screens in this plan get exactly one smoke test each. Exhaustive component tests are out of scope.
-- **Shell:** commands are given for PowerShell on Windows 11. `npm` scripts are cross-platform.
+- **Shell:** commands are given for **Git Bash** (bundled with Git for Windows), not PowerShell. PowerShell's default `Restricted` execution policy blocks the `npm.ps1` and `npx.ps1` shims; Git Bash invokes the `.exe` directly and is unaffected, so no security setting needs changing. Open the terminal *after* installing Node so it inherits the updated PATH. `npm` scripts themselves are cross-platform.
 - **Commit after every task.** Do not batch commits across tasks.
 
 ---
@@ -238,10 +238,12 @@ npx --yes serve spike -l 5055
 Then find the machine's LAN address:
 
 ```bash
-(Get-NetIPAddress -AddressFamily IPv4 | Where-Object { $_.PrefixOrigin -ne 'WellKnown' }).IPAddress
+ipconfig | grep "IPv4"
 ```
 
-Expected: at least one address like `192.168.x.x`. The spike URL is `http://<that-address>:5055/audio-reach.html`.
+Expected: at least one address on a private range such as `192.168.x.x` or `172.x.x.x`. Ignore any `127.0.0.1` or `169.254.x.x` entry. The spike URL is `http://<that-address>:5055/audio-reach.html`.
+
+If the phone cannot load the page: confirm both devices are on the same router, and check whether Windows Firewall prompted to allow Node — it must be allowed on **Private** networks.
 
 Plain HTTP is acceptable here because this page uses only the Audio API, which does not require a secure context. Wake Lock and service workers do, and are tested in Task 3.
 
@@ -636,10 +638,10 @@ Expected: `Wrote public/icon-192.png, icon-512.png, icon-512-maskable.png`
 Verify they are real PNGs rather than empty files:
 
 ```bash
-Get-ChildItem public/*.png | Select-Object Name, Length
+ls -l public/*.png
 ```
 
-Expected: three files, each with a non-zero `Length`. Open one to confirm a white dumbbell on a dark square.
+Expected: three files, each with a non-zero byte size. Open one to confirm a white dumbbell on a dark square.
 
 - [ ] **Step 4: Write the failing test for persistent storage**
 
@@ -1192,13 +1194,13 @@ hottest query: the last-time reference shown on every set."
 - [ ] **Step 1: Vendor the source dataset**
 
 ```bash
-mkdir vendor -Force; Invoke-WebRequest -Uri "https://raw.githubusercontent.com/yuhonas/free-exercise-db/main/dist/exercises.json" -OutFile "vendor/free-exercise-db.json"
+mkdir -p vendor && curl -L -o vendor/free-exercise-db.json https://raw.githubusercontent.com/yuhonas/free-exercise-db/main/dist/exercises.json
 ```
 
 Verify it downloaded a real dataset:
 
 ```bash
-(Get-Content vendor/free-exercise-db.json -Raw | ConvertFrom-Json).Count
+node -e "console.log(JSON.parse(require('fs').readFileSync('vendor/free-exercise-db.json','utf8')).length)"
 ```
 
 Expected: a number in the high hundreds (roughly 800). If this errors or prints 0, the download failed — check the URL is still valid before continuing.
@@ -1511,12 +1513,23 @@ console.log('By equipment:', byEquipment);
 - [ ] **Step 7: Generate the library and check the count**
 
 Run: `npm run build:exercises`
-Expected: it prints the source count, the written count, and a per-equipment breakdown.
 
-**Acceptance:** the written count should land between 150 and 400.
+Expected output, verified by running these filter rules against the vendored dataset on 2026-08-04:
 
-- If it is **below 150**, the filter is too aggressive — check whether `KEPT_CATEGORIES` or the equipment map is dropping something it should not, using the printed breakdown.
-- If it is **above 400**, add a curation pass before continuing: search is still usable at that size, but the list gets noisy. The cheapest curation is to also require `source.mechanic !== null`, which drops many obscure entries. Add that condition to `shouldInclude`, add a test for it alongside the existing `shouldInclude` tests, and re-run.
+```
+Read    873 source exercises
+Wrote   587 exercises to src/data/exercises.json
+By equipment: {
+  barbell: 170, dumbbell: 121, cable: 81, 'body only': 75,
+  machine: 58, kettlebells: 53, bands: 20, 'e-z curl bar': 9
+}
+```
+
+**Acceptance:** the written count should be within roughly ±10% of 587, and every equipment type should be represented. Exact numbers may drift if the upstream dataset changes; the shape is what matters.
+
+If the count is **far below 587**, the filter is too aggressive — use the printed breakdown to find which equipment type or category collapsed to zero.
+
+Do not add a curation pass to shrink this. That was considered and rejected on measurement: the bundle is 102 KB gzipped with instructions, which is negligible for a one-time offline cache, and search plus filters keep 587 entries navigable. Requiring `mechanic !== null` — the obvious extra filter — removes only 4 exercises and is not worth the code.
 
 - [ ] **Step 8: Commit**
 
