@@ -49,9 +49,7 @@ A stable HTTPS origin is required infrastructure, not deployment polish. A PWA i
 to the origin it was installed from: its database, its service worker scope and its
 update channel are all keyed to it. Installing from a temporary LAN address would
 produce an app that cannot update and whose history is lost on reinstall — the exact
-failure this design otherwise works hard to prevent. A local dev server is additionally
-unworkable here because the development machine sits on a client-isolated residential
-network that blocks phone-to-PC traffic entirely.
+failure this design otherwise works hard to prevent.
 
 The consequence is that the repository is public, since GitHub Pages on a private
 repository requires a paid plan. Only source code is published. Training data lives in

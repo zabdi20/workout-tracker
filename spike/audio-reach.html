@@ -25,6 +25,7 @@ Listen for a beep after 30 seconds.</p>
 <div id="count">--</div>
 <button id="start">Start 30s test</button>
 <button id="startNoKeepalive" class="secondary">Start 30s test (no keepalive)</button>
+<button id="toneNow" class="secondary">Play tone now (sanity check)</button>
 <div id="log"></div>
 
 <script>
@@ -96,20 +97,42 @@ async function requestAmbient() {
 
 let running = false;
 
-async function run(useKeepalive) {
+/**
+ * iOS only permits programmatic play() on an element a user gesture has
+ * already started. Starting and immediately stopping the tone inside the
+ * click handler unlocks it for the timed play 30s later. Without this,
+ * play() rejects with NotAllowedError no matter what else is going on.
+ * Must run synchronously in the handler, before any await consumes the
+ * user activation.
+ */
+function primeTone() {
+  const p = tone.play();
+  if (!p || typeof p.then !== 'function') {
+    return Promise.resolve('prime: no promise returned');
+  }
+  return p.then(() => {
+    tone.pause();
+    tone.currentTime = 0;
+    return 'tone primed OK';
+  }).catch(e => 'tone prime FAILED: ' + e.message);
+}
+
+function run(useKeepalive) {
   if (running) { log('already running'); return; }
   running = true;
   logEl.textContent = '';
+
+  // Both play() calls are issued synchronously inside the gesture.
+  const primed = primeTone();
+  const kaStarted = useKeepalive
+    ? keepalive.play().then(() => 'keepalive playing').catch(e => 'keepalive FAILED: ' + e.message)
+    : Promise.resolve('keepalive skipped');
+
   log('UA: ' + navigator.userAgent);
   log('standalone: ' + (window.navigator.standalone === true));
-  await requestAmbient();
-
-  if (useKeepalive) {
-    try { await keepalive.play(); log('keepalive playing'); }
-    catch (e) { log('keepalive play FAILED: ' + e.message); }
-  } else {
-    log('keepalive skipped');
-  }
+  requestAmbient();
+  primed.then(log);
+  kaStarted.then(log);
 
   const end = Date.now() + 30000;
   const tick = setInterval(() => {
@@ -117,10 +140,11 @@ async function run(useKeepalive) {
     countEl.textContent = left;
     if (left === 0) {
       clearInterval(tick);
-      log('firing tone');
+      log('firing tone (visibility=' + document.visibilityState +
+          ', keepalive paused=' + keepalive.paused + ')');
       tone.play()
         .then(() => log('TONE PLAY RESOLVED'))
-        .catch(e => log('TONE PLAY REJECTED: ' + e.message));
+        .catch(e => log('TONE PLAY REJECTED: ' + e.name + ' - ' + e.message));
       keepalive.pause();
       running = false;
     }
@@ -133,6 +157,12 @@ document.addEventListener('visibilitychange', () => {
 
 document.getElementById('start').onclick = () => run(true);
 document.getElementById('startNoKeepalive').onclick = () => run(false);
+document.getElementById('toneNow').onclick = () => {
+  logEl.textContent = '';
+  tone.play()
+    .then(() => log('direct tone play OK - the WAV itself is fine'))
+    .catch(e => log('direct tone play FAILED: ' + e.name + ' - ' + e.message));
+};
 </script>
 </body>
 </html>

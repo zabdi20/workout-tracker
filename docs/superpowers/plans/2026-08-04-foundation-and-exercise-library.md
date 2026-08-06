@@ -12,7 +12,7 @@
 
 **Scope:** This is Plan 1 of 4. It ends with an app deployed to `https://hshadic.github.io/workout-tracker/`, installed on the iPhone home screen, working offline, providing the full exercise library. Routines, cycles, session logging, and backup are Plans 2–4.
 
-**Hosting:** GitHub Pages, project repo `hshadic/workout-tracker`, served from the subpath `/workout-tracker/`. Deployment lands in Task 4 rather than at the end of the plan, because the development machine's network blocks phone-to-PC traffic and a published origin is the only way to reach the device.
+**Hosting:** GitHub Pages, project repo `hshadic/workout-tracker`, served from the subpath `/workout-tracker/`. Deployment lands in Task 4 rather than at the end of the plan so that every device verification from Task 5 onward runs against the origin the app will actually live at — no self-signed certificate warnings, no LAN dependency, and no risk of installing a PWA bound to an address that disappears.
 
 ## Global Constraints
 
@@ -823,7 +823,7 @@ Open `https://localhost:5173/workout-tracker/` on this machine. Note the subpath
 
 Expected: the page renders "Workout Tracker". In DevTools → Application, the manifest is detected and a service worker is registered with scope `/workout-tracker/`.
 
-**Do not install on the iPhone yet.** The residential network this machine is on (`2929_ResidentWifi`, classified Public) uses client isolation, so the phone cannot reach a dev server here. Task 4 publishes to a stable HTTPS URL and every device test from then on uses it. Installing now from a temporary LAN address would create a PWA bound to an origin that disappears — and reinstalling from a different origin starts with an empty database.
+**Do not install on the iPhone yet.** Task 4 publishes to a stable HTTPS URL, and every device test from then on uses it. Installing now from a temporary LAN address would create a PWA bound to an origin that disappears — and reinstalling from a different origin starts with an empty database.
 
 - [ ] **Step 11: Commit**
 
@@ -852,7 +852,7 @@ HTTP is not."
 - Consumes: the production build configured in Task 3.
 - Produces: a stable public HTTPS origin, `https://hshadic.github.io/workout-tracker/`. Every device verification from Task 5 onward uses it in place of a LAN address.
 
-This sits here rather than at the end of the plan because the development machine's network (`2929_ResidentWifi`, Public, client-isolated) blocks phone-to-PC traffic. A published origin is the only way to get the app onto the iPhone at all, so it has to exist before any remaining task can be verified on device.
+This sits here rather than at the end of the plan so every later device verification runs against the origin the app will permanently live at. Testing against a LAN dev server instead means a self-signed certificate warning each session, an address that changes between sessions, and a real risk of installing a PWA bound to an origin that later disappears — which would silently orphan its database.
 
 - [ ] **Step 1: Rename the default branch**
 
