@@ -2070,7 +2070,7 @@ export function filterExercises(
 - [ ] **Step 4: Run the test to verify it passes**
 
 Run: `npm test src/domain/exerciseFilter.test.ts`
-Expected: PASS — 14 tests passed.
+Expected: PASS — 13 tests passed.
 
 - [ ] **Step 5: Write the display labels**
 
