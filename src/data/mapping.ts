@@ -50,7 +50,13 @@ const MUSCLE: Record<string, MuscleGroup> = {
 /** Exercises whose measurement type the general rules get wrong. */
 const MEASUREMENT_OVERRIDES: Array<[RegExp, MeasurementType]> = [
   [/\bassisted\b/i, 'assisted_reps'],
-  [/\b(plank|hold|iron cross|l-sit)\b|\bdead hang\b/i, 'duration'],
+  // Anchored to the *whole* name, not just a trailing word: a bare \b on
+  // "plank" or "iron cross" also caught "Push Up to Side Plank" (a
+  // rep-counted push-up variant) and "Cable Iron Cross" / "Iron Cross"
+  // (rep-counted fly/raise variants), the same class of bug as the
+  // already-fixed "Hang Clean" false positive on \bhang\b. "hold" and
+  // "iron cross" matched nothing or only wrongly, so they are dropped.
+  [/^(plank|dead hang|l-sit)$/i, 'duration'],
   [/\bfarmer'?s walk\b/i, 'weight_duration'],
 ];
 

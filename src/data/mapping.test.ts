@@ -85,6 +85,20 @@ describe('inferMeasurementType', () => {
     expect(inferMeasurementType(source({ name: 'Dead Hang', equipment: 'body only' })))
       .toBe('duration');
   });
+
+  it('treats plank as duration but not a push-up variant that merely ends in "plank"', () => {
+    expect(inferMeasurementType(source({ name: 'Plank', equipment: 'body only' })))
+      .toBe('duration');
+    expect(inferMeasurementType(source({ name: 'Push Up to Side Plank', equipment: 'body only' })))
+      .toBe('bodyweight_reps');
+  });
+
+  it('treats iron cross variants as rep-counted, not duration', () => {
+    expect(inferMeasurementType(source({ name: 'Cable Iron Cross', equipment: 'cable' })))
+      .toBe('weight_reps');
+    expect(inferMeasurementType(source({ name: 'Iron Cross', equipment: 'dumbbell' })))
+      .toBe('weight_reps');
+  });
 });
 
 describe('shouldInclude', () => {
