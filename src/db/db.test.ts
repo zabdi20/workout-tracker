@@ -93,6 +93,21 @@ describe('[exerciseId+completedAt] index', () => {
   });
 });
 
+describe('archived-state filtering', () => {
+  it('filters archived exercises in memory rather than via an indexed query', async () => {
+    const active = makeExercise({ name: 'Active Exercise', isArchived: false });
+    const archived = makeExercise({ name: 'Archived Exercise', isArchived: true });
+    await db.exercises.bulkAdd([active, archived]);
+
+    // isArchived is a boolean, which is not a valid IndexedDB key, so it is
+    // deliberately not indexed. Confirm the intended access pattern instead:
+    // load everything and filter in memory.
+    const nonArchived = (await db.exercises.toArray()).filter((e) => !e.isArchived);
+
+    expect(nonArchived.map((e) => e.id)).toEqual([active.id]);
+  });
+});
+
 describe('settings singleton', () => {
   it('stores settings under a fixed id', async () => {
     await db.settings.put({
