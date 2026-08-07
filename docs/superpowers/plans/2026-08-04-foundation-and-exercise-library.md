@@ -31,7 +31,7 @@
 
 ---
 
-## Prerequisites (do before Task 1)
+## Prerequisites (do before Task 2)
 
 Node.js is **not currently installed** on this machine. Verified: `node` and `npm` are absent from PATH and from all standard install locations.
 
@@ -58,8 +58,8 @@ If `node` is still not found, log out and back in, or add `C:\Program Files\node
 
 | File | Responsibility |
 | --- | --- |
-| `spike/audio-reach.html` | Throwaway device experiment. Deleted or left inert after Task 1; never imported by the app. |
-| `docs/superpowers/spikes/2026-08-04-rest-alert-reach.md` | Written result of the spike. The decision record. |
+| `spike/audio-reach.html` | Throwaway device experiment, already run. Never imported by the app; safe to delete. |
+| `docs/superpowers/spikes/2026-08-04-rest-alert-reach.md` | Written result of the spike. The decision record. **Complete.** |
 | `package.json`, `tsconfig.json`, `vite.config.ts`, `index.html` | Build and test configuration. |
 | `.gitignore`, `.gitattributes` | Ignore rules; forces LF line endings to stop CRLF churn. |
 | `.github/workflows/deploy.yml` | Builds, tests, and publishes to GitHub Pages on push to `main`. |
@@ -84,232 +84,25 @@ No router in this plan. There is one screen; adding routing before a second scre
 
 ---
 
-## Task 1: Spike — how far does the rest alert reach?
+## Task 1: Spike — how far does the rest alert reach? — **DONE 2026-08-04**
 
-**This task is exempt from TDD.** It is a throwaway measurement, not production code. Its deliverable is a written result that decides a design question in the spec. No automated tests.
+**No action required. This task is complete; do not re-run it.**
 
-**Files:**
-- Create: `spike/audio-reach.html`
-- Create: `docs/superpowers/spikes/2026-08-04-rest-alert-reach.md`
+Result: `docs/superpowers/spikes/2026-08-04-rest-alert-reach.md`
 
-**Interfaces:**
-- Consumes: nothing.
-- Produces: a decision recorded in the spike document, consumed by Plan 3's rest-timer task. No code is exported.
+**Outcome:** background alerting is impossible on iOS for a PWA. Timers and audio
+playback are both suspended when the app is backgrounded, regardless of audio session
+category and regardless of whether the app is installed. Measured on iOS 18.7 / Safari
+26.5.2: an installed app advanced its audio clock 5.5 s over 58 s away, under 7 % of
+real time.
 
-- [ ] **Step 1: Write the spike page**
+The pre-committed third outcome applies — **foreground tone plus Wake Lock only**, with
+app-switched and screen-locked alerting documented as unsupported. Plan 3 builds the
+rest timer accordingly: timestamp-based, Wake Lock as the primary mechanism
+re-acquired on `visibilitychange`, and elapsed rest made obvious on resume.
 
-Create `spike/audio-reach.html`:
-
-```html
-<!doctype html>
-<html lang="en">
-<head>
-<meta charset="utf-8">
-<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
-<meta name="apple-mobile-web-app-capable" content="yes">
-<title>Rest Alert Reach Spike</title>
-<style>
-  body { font: 16px -apple-system, sans-serif; margin: 0; padding: 16px;
-         background: #111; color: #eee; }
-  button { font-size: 18px; padding: 14px 18px; margin: 6px 0; width: 100%;
-           border: 0; border-radius: 10px; background: #2d6cdf; color: #fff; }
-  #log { white-space: pre-wrap; font: 13px ui-monospace, monospace;
-         background: #000; padding: 10px; border-radius: 8px; margin-top: 14px; }
-  #count { font-size: 44px; font-weight: 700; text-align: center; margin: 12px 0; }
-</style>
-</head>
-<body>
-<h1>Rest alert reach</h1>
-<div id="count">--</div>
-<button id="start">Start 30s test</button>
-<button id="startNoKeepalive">Start 30s test (no keepalive)</button>
-<div id="log"></div>
-
-<script>
-const logEl = document.getElementById('log');
-const countEl = document.getElementById('count');
-function log(msg) {
-  const t = new Date().toLocaleTimeString();
-  logEl.textContent += `[${t}] ${msg}\n`;
-}
-
-// --- WAV generators (no assets, no network) ---
-function wavHeader(view, numSamples, sampleRate) {
-  const w = (off, s) => { for (let i = 0; i < s.length; i++) view.setUint8(off + i, s.charCodeAt(i)); };
-  w(0, 'RIFF');
-  view.setUint32(4, 36 + numSamples, true);
-  w(8, 'WAVE'); w(12, 'fmt ');
-  view.setUint32(16, 16, true);
-  view.setUint16(20, 1, true);          // PCM
-  view.setUint16(22, 1, true);          // mono
-  view.setUint32(24, sampleRate, true);
-  view.setUint32(28, sampleRate, true); // byte rate (8-bit mono)
-  view.setUint16(32, 1, true);          // block align
-  view.setUint16(34, 8, true);          // bits per sample
-  w(36, 'data');
-  view.setUint32(40, numSamples, true);
-}
-
-function silentWavUrl(seconds) {
-  const sampleRate = 8000;
-  const n = sampleRate * seconds;
-  const buf = new ArrayBuffer(44 + n);
-  const view = new DataView(buf);
-  wavHeader(view, n, sampleRate);
-  for (let i = 0; i < n; i++) view.setUint8(44 + i, 128); // 8-bit unsigned silence
-  return URL.createObjectURL(new Blob([buf], { type: 'audio/wav' }));
-}
-
-function toneWavUrl(freq, seconds) {
-  const sampleRate = 8000;
-  const n = Math.floor(sampleRate * seconds);
-  const buf = new ArrayBuffer(44 + n);
-  const view = new DataView(buf);
-  wavHeader(view, n, sampleRate);
-  for (let i = 0; i < n; i++) {
-    const t = i / sampleRate;
-    const env = Math.min(1, t * 20, (seconds - t) * 20);
-    const v = Math.sin(2 * Math.PI * freq * t) * env;
-    view.setUint8(44 + i, Math.max(0, Math.min(255, Math.round(128 + v * 100))));
-  }
-  return URL.createObjectURL(new Blob([buf], { type: 'audio/wav' }));
-}
-
-const keepalive = new Audio(silentWavUrl(1));
-keepalive.loop = true;
-const tone = new Audio(toneWavUrl(880, 1.2));
-
-async function requestAmbient() {
-  if ('audioSession' in navigator) {
-    try {
-      navigator.audioSession.type = 'ambient';
-      log('audioSession.type set to "ambient" -> ' + navigator.audioSession.type);
-    } catch (e) {
-      log('audioSession set FAILED: ' + e.message);
-    }
-  } else {
-    log('navigator.audioSession NOT available');
-  }
-}
-
-async function run(useKeepalive) {
-  logEl.textContent = '';
-  log('UA: ' + navigator.userAgent);
-  log('standalone: ' + (window.navigator.standalone === true));
-  await requestAmbient();
-
-  if (useKeepalive) {
-    try { await keepalive.play(); log('keepalive playing'); }
-    catch (e) { log('keepalive play FAILED: ' + e.message); }
-  } else {
-    log('keepalive skipped');
-  }
-
-  const end = Date.now() + 30000;
-  const tick = setInterval(() => {
-    const left = Math.max(0, Math.ceil((end - Date.now()) / 1000));
-    countEl.textContent = left;
-    if (left === 0) {
-      clearInterval(tick);
-      tone.play()
-        .then(() => log('TONE PLAY RESOLVED'))
-        .catch(e => log('TONE PLAY REJECTED: ' + e.message));
-      keepalive.pause();
-    }
-  }, 250);
-
-  document.addEventListener('visibilitychange', () => {
-    log('visibility -> ' + document.visibilityState);
-  });
-}
-
-document.getElementById('start').onclick = () => run(true);
-document.getElementById('startNoKeepalive').onclick = () => run(false);
-</script>
-</body>
-</html>
-```
-
-- [ ] **Step 2: Serve it on the LAN**
-
-Run, from the project root:
-
-```bash
-npx --yes serve spike -l 5055
-```
-
-Then find the machine's LAN address:
-
-```bash
-ipconfig | grep "IPv4"
-```
-
-Expected: at least one address on a private range such as `192.168.x.x` or `172.x.x.x`. Ignore any `127.0.0.1` or `169.254.x.x` entry. The spike URL is `http://<that-address>:5055/audio-reach.html`.
-
-If the phone cannot load the page: confirm both devices are on the same router, and check whether Windows Firewall prompted to allow Node — it must be allowed on **Private** networks.
-
-Plain HTTP is acceptable here because this page uses only the Audio API, which does not require a secure context. Wake Lock and service workers do, and are tested in Task 3.
-
-- [ ] **Step 3: Run the four test cases on the iPhone**
-
-Open the URL in Safari on the iPhone (same Wi-Fi). For each case, press **Start 30s test**, then perform the action, and record whether the tone was audible:
-
-1. **Foreground** — leave Safari open and visible.
-2. **App switched** — immediately swipe to another app (e.g. Settings).
-3. **Locked** — immediately press the side button to lock the screen.
-4. **With music** — start Spotify or Apple Music playing, return to Safari, start the test, then switch away. Record both whether the tone played **and whether the music was interrupted, ducked, or unaffected**.
-
-Then repeat cases 2 and 3 with **Start 30s test (no keepalive)** to confirm the keepalive is what makes the difference.
-
-Read the on-page log after each run — reopening Safari shows the log, including whether `tone.play()` resolved or was rejected.
-
-- [ ] **Step 4: Record the result**
-
-Create `docs/superpowers/spikes/2026-08-04-rest-alert-reach.md` filling in the observed values:
-
-```markdown
-# Spike result: rest alert reach
-
-**Date:** 2026-08-04
-**Device / iOS version:** <fill in: Settings > General > About>
-**Tested in:** Safari tab / home-screen install (state which)
-
-## Results
-
-| Case | Keepalive | Tone audible? | Music impact |
-| --- | --- | --- | --- |
-| Foreground | yes | | n/a |
-| App switched | yes | | |
-| Screen locked | yes | | |
-| App switched | no | | |
-| Screen locked | no | | |
-
-`navigator.audioSession` available: yes / no
-`audioSession.type = 'ambient'` accepted: yes / no
-
-## Decision
-
-<One of the three pre-committed outcomes from the spec:>
-- Survives and mixes cleanly -> keepalive ON by default.
-- Survives but interrupts music -> keepalive ships OFF by default behind an
-  explicit setting.
-- Does not survive -> foreground tone + Wake Lock only; app-switch and locked
-  cases documented as unsupported.
-
-## Notes
-
-<Anything surprising. Paste relevant lines from the on-page log.>
-```
-
-- [ ] **Step 5: Commit**
-
-```bash
-git add spike docs/superpowers/spikes && git commit -m "spike: measure rest alert reach on iOS
-
-Throwaway page testing whether a silent-audio keepalive lets an alert
-tone fire after backgrounding, and whether it disturbs the user's music.
-Result recorded in docs/superpowers/spikes/."
-```
+`spike/audio-reach.html` is retained as the record of how the measurement was taken. It
+is never imported by the app and can be deleted at any time.
 
 ---
 
@@ -3085,7 +2878,7 @@ deletion, since deleting would orphan logged sets."
 - [ ] The app is installed on the iPhone home screen from that URL and opens without browser chrome.
 - [ ] The library loads offline in Airplane Mode.
 - [ ] A custom exercise survives closing and reopening the app.
-- [ ] `docs/superpowers/spikes/2026-08-04-rest-alert-reach.md` records a decision, ready for Plan 3.
+- [x] `docs/superpowers/spikes/2026-08-04-rest-alert-reach.md` records a decision, ready for Plan 3. **Done 2026-08-04.**
 
 ## Not in this plan
 

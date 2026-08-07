@@ -239,36 +239,41 @@ whenever the document becomes hidden** — switching apps or manually locking th
 both drop it — and it is not restored automatically. The app must re-acquire on
 `visibilitychange` when it becomes visible again. Coverage is therefore:
 
-| Situation                    | Wake Lock | Covered by                         |
-| ---------------------------- | --------- | ---------------------------------- |
-| Phone visible, app open      | holds     | Wake Lock + foreground tone        |
-| User switches to another app | released  | background audio keepalive only    |
-| User locks the phone         | released  | background audio keepalive only    |
+| Situation                    | Wake Lock | Alerting                        |
+| ---------------------------- | --------- | ------------------------------- |
+| Phone visible, app open      | holds     | Wake Lock + foreground tone     |
+| User switches to another app | released  | **none — unsupported on iOS**   |
+| User locks the phone         | released  | **none — unsupported on iOS**   |
 
-**Second mechanism (v1): audible alert.** Both alerting mechanisms ship in v1. The
-audible alert has two tiers, differing sharply in risk:
+**Second mechanism (v1): foreground tone.** When the document is visible, play a
+tone on timer completion. Silenceable via the `restAlertSound` setting.
 
-*Foreground tone* — when the document is visible, play a tone on timer completion.
-Nothing to prove; this works and is unconditional in v1.
+**Background alerting is not possible and will not be attempted.** This was measured,
+not assumed — see `docs/superpowers/spikes/2026-08-04-rest-alert-reach.md`.
 
-*Background reach* — iOS permits web audio to continue while backgrounded provided
-playback is already running. Starting a silent looping track when rest begins keeps
-the audio session alive so the tone still fires after the user switches apps, reaching
-them through earbuds — often preferable to a haptic in a gym. This is the **only**
-mechanism covering the app-switch and locked cases, so it carries real weight.
+iOS suspends both timers and audio playback when a PWA is backgrounded, regardless of
+audio session category and regardless of whether the app is installed. On iOS 18.7 /
+Safari 26.5.2, an installed app playing a pre-rendered track advanced its audio clock
+5.5 s over 58 s away — under 7 % of real time — so a beep 30 s in could not sound.
 
-The keepalive technique is **unproven on this device** and its extent is settled by
-Spike 1 (see Open questions), for two reasons: background-audio survival has been
-fragile across iOS releases; and it may interrupt or duck the user's own music, which
-would be worse than the problem it solves. Recent Safari exposes
-`navigator.audioSession`, which should permit requesting an ambient/mixing category
-rather than seizing the audio session — this needs verifying, not assuming. The same
-mixing question applies in milder form to the foreground tone.
+Three approaches were tried and all fail:
 
-The spike determines how far sound reaches, not whether sound exists. A negative
-result narrows coverage to the foreground tone; it does not remove the feature.
+- A silent looping keepalive plus a JS-timed tone. Timers freeze; a 30 s timer was
+  measured firing at 81 s, on resume.
+- A single pre-rendered track with the beep baked in, needing no JavaScript at fire
+  time. The audio clock itself is suspended, so removing JS from the critical path
+  changes nothing. This rules out the whole class of workaround.
+- The `playback` audio session category, which is specified for background-capable
+  media. It does seize the audio session — it demonstrably stopped a playing video —
+  and still does not play while backgrounded. It costs the user their music and buys
+  nothing, so it is not shipped.
 
-Settings carries a `restAlertSound` toggle so the alert can be silenced outright.
+This is a platform limit of the same kind as the absent Vibration API, not a design
+choice.
+
+**Consequence:** returning to the app after rest has elapsed is a normal flow, not an
+edge case. The UI must make elapsed rest obvious on resume, and the timer must
+recompute from its stored deadline rather than trusting accumulated ticks.
 
 **Rejected: Web Push.** iOS 16.4+ does support Web Push for home-screen-installed
 PWAs, including while locked. It is rejected because pushes must originate from a
@@ -300,8 +305,7 @@ basement, the exact environment where it must work.
 - Active session logging across all six measurement types, with last-time reference
 - Rest timer, timestamp-based, with Screen Wake Lock and re-acquisition on
   `visibilitychange`
-- Audible rest alert: foreground tone unconditionally, plus background audio keepalive
-  to the extent Spike 1 shows it survives. Silenceable via `restAlertSound`.
+- Audible rest alert while the app is visible, silenceable via `restAlertSound`
 - History browse **and editing of past sessions**
 - PR detection and badges
 - Backup export / import, prompting when `lastBackupAt` is more than 14 days old
@@ -372,40 +376,20 @@ Not doing: exhaustive component snapshot tests.
 
 Implementation follows TDD.
 
-## Open questions
+## Resolved questions
 
-### Spike 1 — how far does the rest alert reach? (do this first)
+### Spike 1 — how far does the rest alert reach? **RESOLVED**
 
-**Question:** can a PWA play an alert tone after the user switches to another app or
-locks the phone, and does doing so disrupt their music?
+Run 2026-08-04 on iOS 18.7 / Safari 26.5.2. Full method and measurements in
+`docs/superpowers/spikes/2026-08-04-rest-alert-reach.md`.
 
-The foreground tone is not in question and needs no spike. What is in question is the
-silent-loop keepalive that extends the tone's reach past backgrounding.
+**Result:** the pre-committed third outcome. Background alerting is impossible on iOS
+for a PWA; foreground tone plus Wake Lock only. See Rest-over alerting above.
 
-**Why it is first:** the keepalive is the only mechanism covering the app-switch and
-screen-locked cases, and its answer cannot be obtained from documentation — it depends
-on the behaviour of a specific iOS version on a real device. Learning the answer costs
-roughly an hour now and considerably more once the session UI exists and would have to
-be reworked around it.
-
-**Method:** a throwaway static page, installed to the iPhone home screen, that starts
-a silent looping track, waits 60 seconds, and plays a tone. Test four cases: app
-foregrounded; app switched away; phone locked; and all of the above with Spotify
-playing. Also test whether `navigator.audioSession` type `ambient` permits mixing
-rather than interrupting.
-
-**Outcomes** (pre-committed, so the result is not relitigated later):
-
-- *Survives backgrounding and mixes cleanly* → keepalive on by default. Full coverage.
-- *Survives but interrupts music* → keepalive ships **off by default**, behind an
-  explicit "alert me when the app is closed (interrupts music)" setting. Hijacking the
-  user's music without consent is worse than a missed alert. The foreground tone is
-  unaffected and stays on.
-- *Does not survive backgrounding* → foreground tone and Wake Lock only; the
-  app-switch and locked cases are documented as unsupported.
-
-In every outcome the rest alert exists and v1 ships. Only its reach varies, and only
-the alerting layer changes — no other production code depends on the result.
+The spike paid for itself twice over. Without it, the rest timer would have been built
+around a JS timer calling `play()` — an approach that measurably fires 51 seconds late
+and only when the user happens to reopen the app. It passes every desktop test and
+fails silently in a gym.
 
 ### Deferred
 
