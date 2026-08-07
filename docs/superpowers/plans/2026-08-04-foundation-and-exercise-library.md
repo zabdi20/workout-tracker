@@ -1065,11 +1065,15 @@ export class WorkoutDb extends Dexie {
 
   constructor() {
     super('workout-tracker');
+    // isCustom/isArchived/isActive are booleans and Session.routineId is
+    // string|null: IndexedDB cannot key on booleans or null, so these fields
+    // are deliberately left out of the index strings below. Query them by
+    // loading with toArray() and filtering in memory instead.
     this.version(1).stores({
-      exercises: 'id, name, equipment, measurementType, isCustom, isArchived',
-      routines: 'id, name, isArchived, updatedAt',
-      cycles: 'id, isActive',
-      sessions: 'id, startedAt, status, routineId',
+      exercises: 'id, name, equipment, measurementType',
+      routines: 'id, name, updatedAt',
+      cycles: 'id',
+      sessions: 'id, startedAt, status',
       // The compound index serves the hottest query in the app:
       // "what did I do last time on this exercise?"
       sets: 'id, sessionId, exerciseId, completedAt, [exerciseId+completedAt]',
