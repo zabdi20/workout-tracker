@@ -1,15 +1,18 @@
 import { useMemo, useState } from 'react';
 import { useLiveQuery } from 'dexie-react-hooks';
+import type { Exercise } from '../../db/types';
 import { listExercises } from '../../db/exercises';
 import {
   EMPTY_FILTER, filterExercises, isFilterActive, type ExerciseFilter,
 } from '../../domain/exerciseFilter';
+import { CustomExerciseForm } from './CustomExerciseForm';
 import { ExerciseList } from './ExerciseList';
 import { FilterSheet } from './FilterSheet';
 
 export function LibraryScreen() {
   const [filter, setFilter] = useState<ExerciseFilter>(EMPTY_FILTER);
   const [showFilters, setShowFilters] = useState(false);
+  const [editing, setEditing] = useState<Exercise | 'new' | null>(null);
   const exercises = useLiveQuery(() => listExercises(), []);
 
   const visible = useMemo(
@@ -22,6 +25,14 @@ export function LibraryScreen() {
   return (
     <section>
       <h2>Exercises</h2>
+
+      {editing && (
+        <CustomExerciseForm
+          existing={editing === 'new' ? undefined : editing}
+          onDone={() => setEditing(null)}
+          onCancel={() => setEditing(null)}
+        />
+      )}
 
       <input
         type="search"
@@ -40,6 +51,7 @@ export function LibraryScreen() {
             Clear filters
           </button>
         )}
+        <button type="button" onClick={() => setEditing('new')}>New exercise</button>
       </div>
 
       {showFilters && <FilterSheet filter={filter} onChange={setFilter} />}
@@ -49,7 +61,7 @@ export function LibraryScreen() {
       ) : (
         <>
           <p className="count">{visible.length} exercises</p>
-          <ExerciseList exercises={visible} />
+          <ExerciseList exercises={visible} onSelect={(e) => e.isCustom && setEditing(e)} />
         </>
       )}
     </section>
