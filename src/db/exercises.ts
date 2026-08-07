@@ -45,7 +45,14 @@ export async function updateExercise(
   id: string,
   changes: Partial<Exercise>,
 ): Promise<void> {
-  await db.exercises.update(id, changes);
+  // Dexie turns an `id` inside `changes` into delete-then-add under the new
+  // key. That is a real hard delete, and it would orphan every LoggedSet
+  // referencing the old id — exactly what archiving exists to prevent.
+  // isCustom is stripped for a different reason: flipping it corrupts the
+  // seed gate, which counts non-custom rows to decide whether the bundled
+  // library still needs seeding.
+  const { id: _discardedId, isCustom: _discardedIsCustom, ...safe } = changes;
+  await db.exercises.update(id, safe);
 }
 
 /**

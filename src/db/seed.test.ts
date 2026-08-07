@@ -41,7 +41,7 @@ describe('seedExercisesIfEmpty', () => {
     expect(await db.exercises.count()).toBe(Math.max(a, b));
   });
 
-  it('does not run when only custom exercises exist', async () => {
+  it('seeds alongside custom exercises without disturbing them', async () => {
     await createCustomExercise({
       name: 'My Move', primaryMuscles: ['chest'], secondaryMuscles: [],
       equipment: 'cable', measurementType: 'weight_reps',

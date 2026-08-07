@@ -18,7 +18,7 @@ describe('createCustomExercise', () => {
       measurementType: 'weight_reps',
     });
 
-    expect(ex.id).toMatch(/[0-9a-f-]{36}/);
+    expect(ex.id).toMatch(/^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/);
     expect(ex.isCustom).toBe(true);
     expect(ex.isArchived).toBe(false);
     await expect(getExercise(ex.id)).resolves.toEqual(ex);
@@ -124,6 +124,34 @@ describe('updateExercise', () => {
     const updated = await getExercise(ex.id);
     expect(updated?.name).toBe('Low-to-High Cable Fly');
     expect(updated?.equipment).toBe('cable');
+    expect(updated?.isCustom).toBe(true);
+  });
+
+  it('strips id from changes so it cannot hijack the row into a delete-and-add', async () => {
+    const ex = await createCustomExercise({
+      name: 'Cable Fly', primaryMuscles: ['chest'], secondaryMuscles: [],
+      equipment: 'cable', measurementType: 'weight_reps',
+    });
+
+    await updateExercise(ex.id, { name: 'Renamed', id: 'hijacked-id' });
+
+    const stillThere = await getExercise(ex.id);
+    expect(stillThere).toBeDefined();
+    expect(stillThere?.name).toBe('Renamed');
+    expect(stillThere?.id).toBe(ex.id);
+    expect(await getExercise('hijacked-id')).toBeUndefined();
+    expect(await db.exercises.count()).toBe(1);
+  });
+
+  it('strips isCustom from changes so it cannot corrupt the seed gate', async () => {
+    const ex = await createCustomExercise({
+      name: 'Cable Fly', primaryMuscles: ['chest'], secondaryMuscles: [],
+      equipment: 'cable', measurementType: 'weight_reps',
+    });
+
+    await updateExercise(ex.id, { isCustom: false });
+
+    const updated = await getExercise(ex.id);
     expect(updated?.isCustom).toBe(true);
   });
 });
