@@ -1,4 +1,6 @@
-import { filterExercises, isFilterActive, EMPTY_FILTER } from './exerciseFilter';
+import {
+  filterExercises, isFilterActive, EMPTY_FILTER, availableMuscles, availableEquipment,
+} from './exerciseFilter';
 import type { Exercise } from '../db/types';
 
 function ex(over: Partial<Exercise> = {}): Exercise {
@@ -101,6 +103,48 @@ describe('filterExercises combining criteria', () => {
     });
 
     expect(result.map((e) => e.name)).toEqual(['Cable Fly']);
+  });
+});
+
+describe('availableMuscles', () => {
+  it('returns only muscles actually present, in canonical MUSCLE_GROUPS order', () => {
+    const all = [
+      ex({ primaryMuscles: ['quads'], secondaryMuscles: ['glutes'] }),
+      ex({ primaryMuscles: ['chest'], secondaryMuscles: ['triceps'] }),
+    ];
+    // Canonical order (see labels.ts) is chest, delts, ..., quads, ...,
+    // glutes, ..., triceps -- not discovery order.
+    expect(availableMuscles(all)).toEqual(['chest', 'triceps', 'quads', 'glutes']);
+  });
+
+  it('excludes muscles from the vocabulary that no loaded exercise uses', () => {
+    const all = [ex({ primaryMuscles: ['chest'], secondaryMuscles: [] })];
+    const present = availableMuscles(all);
+    expect(present).toContain('chest');
+    expect(present).not.toContain('front_delts');
+    expect(present).not.toContain('obliques');
+  });
+
+  it('returns an empty list for no exercises', () => {
+    expect(availableMuscles([])).toEqual([]);
+  });
+});
+
+describe('availableEquipment', () => {
+  it('returns only equipment actually present, in canonical EQUIPMENT_TYPES order', () => {
+    const all = [
+      ex({ equipment: 'dumbbell' }),
+      ex({ equipment: 'barbell' }),
+    ];
+    expect(availableEquipment(all)).toEqual(['barbell', 'dumbbell']);
+  });
+
+  it('excludes equipment from the vocabulary that no loaded exercise uses', () => {
+    const all = [ex({ equipment: 'machine' })];
+    const present = availableEquipment(all);
+    expect(present).toContain('machine');
+    expect(present).not.toContain('smith');
+    expect(present).not.toContain('other');
   });
 });
 

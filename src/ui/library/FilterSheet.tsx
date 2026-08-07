@@ -1,12 +1,15 @@
 import type { Equipment, MuscleGroup } from '../../db/types';
 import type { ExerciseFilter } from '../../domain/exerciseFilter';
-import {
-  EQUIPMENT_TYPES, MUSCLE_GROUPS, equipmentLabel, muscleLabel,
-} from '../../domain/labels';
+import { equipmentLabel, muscleLabel } from '../../domain/labels';
 
 interface Props {
   filter: ExerciseFilter;
   onChange: (filter: ExerciseFilter) => void;
+  /** Muscles to offer as checkboxes, derived from the loaded exercises
+   *  rather than the full type vocabulary -- see availableMuscles. */
+  availableMuscles: MuscleGroup[];
+  /** Equipment to offer as checkboxes -- see availableEquipment. */
+  availableEquipment: Equipment[];
 }
 
 function toggle<T>(values: T[], value: T): T[] {
@@ -15,12 +18,14 @@ function toggle<T>(values: T[], value: T): T[] {
     : [...values, value];
 }
 
-export function FilterSheet({ filter, onChange }: Props) {
+export function FilterSheet({
+  filter, onChange, availableMuscles, availableEquipment,
+}: Props) {
   return (
     <div className="filter-sheet">
       <fieldset>
         <legend>Muscle</legend>
-        {MUSCLE_GROUPS.map((muscle: MuscleGroup) => (
+        {availableMuscles.map((muscle: MuscleGroup) => (
           <label key={muscle}>
             <input
               type="checkbox"
@@ -36,7 +41,7 @@ export function FilterSheet({ filter, onChange }: Props) {
 
       <fieldset>
         <legend>Equipment</legend>
-        {EQUIPMENT_TYPES.map((equipment: Equipment) => (
+        {availableEquipment.map((equipment: Equipment) => (
           <label key={equipment}>
             <input
               type="checkbox"

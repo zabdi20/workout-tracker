@@ -51,7 +51,7 @@ it('filters by equipment', async () => {
   render(<LibraryScreen />);
   await screen.findByText('Cable Fly');
 
-  await user.click(screen.getByRole('button', { name: /filters/i }));
+  await user.click(screen.getByRole('button', { name: /^filters/i }));
   await user.click(screen.getByRole('checkbox', { name: 'Cable' }));
 
   expect(await screen.findByText('Cable Fly')).toBeInTheDocument();
@@ -63,7 +63,7 @@ it('filters by muscle, matching secondary muscles too', async () => {
   render(<LibraryScreen />);
   await screen.findByText('Barbell Squat');
 
-  await user.click(screen.getByRole('button', { name: /filters/i }));
+  await user.click(screen.getByRole('button', { name: /^filters/i }));
   await user.click(screen.getByRole('checkbox', { name: 'Triceps' }));
 
   // Bench lists triceps as a secondary muscle; squat does not work them.
@@ -76,7 +76,7 @@ it('clears all filters at once', async () => {
   render(<LibraryScreen />);
   await screen.findByText('Barbell Squat');
 
-  await user.click(screen.getByRole('button', { name: /filters/i }));
+  await user.click(screen.getByRole('button', { name: /^filters/i }));
   await user.click(screen.getByRole('checkbox', { name: 'Triceps' }));
   await screen.findByText('Barbell Bench Press');
 
@@ -84,6 +84,42 @@ it('clears all filters at once', async () => {
 
   expect(await screen.findByText('Barbell Squat')).toBeInTheDocument();
   expect(screen.getByText('Barbell Bench Press')).toBeInTheDocument();
+});
+
+it('does not render a filter checkbox for a muscle no loaded exercise uses', async () => {
+  const user = userEvent.setup();
+  render(<LibraryScreen />);
+  await screen.findByText('Barbell Squat');
+
+  await user.click(screen.getByRole('button', { name: /^filters/i }));
+
+  // The fixtures only work chest/triceps/quads/glutes -- never delts, which
+  // sits right next to the (equally unused) front/side/rear delt variants
+  // in the full MuscleGroup vocabulary.
+  expect(screen.queryByRole('checkbox', { name: 'Shoulders' })).not.toBeInTheDocument();
+  expect(screen.getByRole('checkbox', { name: 'Triceps' })).toBeInTheDocument();
+});
+
+it('reflects the filter sheet open/closed state via aria-expanded', async () => {
+  const user = userEvent.setup();
+  render(<LibraryScreen />);
+  await screen.findByText('Barbell Squat');
+
+  const toggle = screen.getByRole('button', { name: /^filters/i });
+  expect(toggle).toHaveAttribute('aria-expanded', 'false');
+
+  await user.click(toggle);
+  expect(toggle).toHaveAttribute('aria-expanded', 'true');
+});
+
+it('pluralizes the exercise count correctly', async () => {
+  const user = userEvent.setup();
+  render(<LibraryScreen />);
+  await screen.findByText('Barbell Squat');
+  expect(screen.getByText('2 exercises')).toBeInTheDocument();
+
+  await user.type(screen.getByRole('searchbox', { name: /search exercises/i }), 'squat');
+  expect(await screen.findByText('1 exercise')).toBeInTheDocument();
 });
 
 it('swaps the edit form to the newly clicked exercise instead of keeping the stale one open', async () => {

@@ -3,7 +3,8 @@ import { useLiveQuery } from 'dexie-react-hooks';
 import type { Exercise } from '../../db/types';
 import { listExercises } from '../../db/exercises';
 import {
-  EMPTY_FILTER, filterExercises, isFilterActive, type ExerciseFilter,
+  EMPTY_FILTER, availableEquipment, availableMuscles, filterExercises,
+  isFilterActive, type ExerciseFilter,
 } from '../../domain/exerciseFilter';
 import { CustomExerciseForm } from './CustomExerciseForm';
 import { ExerciseList } from './ExerciseList';
@@ -19,6 +20,9 @@ export function LibraryScreen() {
     () => filterExercises(exercises ?? [], filter),
     [exercises, filter],
   );
+
+  const muscleFacets = useMemo(() => availableMuscles(exercises ?? []), [exercises]);
+  const equipmentFacets = useMemo(() => availableEquipment(exercises ?? []), [exercises]);
 
   const activeCount = filter.muscles.length + filter.equipment.length;
 
@@ -44,7 +48,7 @@ export function LibraryScreen() {
       />
 
       <div className="filter-controls">
-        <button type="button" onClick={() => setShowFilters((s) => !s)}>
+        <button type="button" aria-expanded={showFilters} onClick={() => setShowFilters((s) => !s)}>
           Filters{activeCount > 0 ? ` (${activeCount})` : ''}
         </button>
         {isFilterActive(filter) && (
@@ -55,13 +59,20 @@ export function LibraryScreen() {
         <button type="button" onClick={() => setEditing('new')}>New exercise</button>
       </div>
 
-      {showFilters && <FilterSheet filter={filter} onChange={setFilter} />}
+      {showFilters && (
+        <FilterSheet
+          filter={filter}
+          onChange={setFilter}
+          availableMuscles={muscleFacets}
+          availableEquipment={equipmentFacets}
+        />
+      )}
 
       {exercises === undefined ? (
         <p>Loading…</p>
       ) : (
         <>
-          <p className="count">{visible.length} exercises</p>
+          <p className="count">{visible.length} exercise{visible.length === 1 ? '' : 's'}</p>
           <ExerciseList exercises={visible} onSelect={(e) => e.isCustom && setEditing(e)} />
         </>
       )}
