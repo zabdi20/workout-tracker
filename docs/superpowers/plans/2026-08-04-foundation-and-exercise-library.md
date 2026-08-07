@@ -2844,6 +2844,14 @@ And render the form above the search input, immediately after the `<h2>`:
 ```tsx
 {editing && (
   <CustomExerciseForm
+    // The key is load-bearing. CustomExerciseForm seeds its fields from
+    // `existing` via useState initializers, which run only on mount. The
+    // exercise list stays clickable beneath the open form, so switching
+    // edit targets without the key reuses the same instance: the fields
+    // keep the old exercise's values while existing.id points at the new
+    // one, and Save silently overwrites the new exercise with the old
+    // one's data.
+    key={editing === 'new' ? 'new' : editing.id}
     existing={editing === 'new' ? undefined : editing}
     onDone={() => setEditing(null)}
     onCancel={() => setEditing(null)}
