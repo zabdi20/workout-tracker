@@ -153,8 +153,12 @@ npm install react react-dom dexie dexie-react-hooks
 ```
 
 ```bash
-npm install -D vite @vitejs/plugin-react typescript @types/react @types/react-dom vitest jsdom @testing-library/react @testing-library/jest-dom @testing-library/user-event fake-indexeddb tsx
+npm install -D vite @vitejs/plugin-react typescript @types/node @types/react @types/react-dom vitest jsdom @testing-library/react @testing-library/jest-dom @testing-library/user-event fake-indexeddb tsx
 ```
+
+`@types/node` is required because `src/test-setup.ts` imports `webcrypto` from
+`node:crypto`. This has nothing to do with dependency versions — it is needed under
+any TypeScript version.
 
 Expected: both installs complete with no `ERR!` lines. Installing latest rather than pinned versions is deliberate — the plan should not encode stale version numbers.
 
@@ -204,7 +208,7 @@ Create `tsconfig.json`:
     "resolveJsonModule": true,
     "esModuleInterop": true,
     "skipLibCheck": true,
-    "types": ["vitest/globals", "@testing-library/jest-dom"]
+    "types": ["node", "vitest/globals", "@testing-library/jest-dom"]
   },
   "include": ["src", "scripts", "vite.config.ts"]
 }
