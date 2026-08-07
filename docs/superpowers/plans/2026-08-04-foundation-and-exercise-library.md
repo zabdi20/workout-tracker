@@ -19,7 +19,11 @@
 - **Target platform:** iOS Safari 16.4+, installed via "Add to Home Screen". Desktop browsers are for development only.
 - **No backend.** No network requests at runtime. Everything works offline after first load.
 - **Timestamps** are stored as epoch milliseconds (`number`), always UTC. Never store local-time strings.
-- **IDs** are generated with `crypto.randomUUID()`.
+- **IDs** for user-created entities are generated with `crypto.randomUUID()`.
+  **Bundled exercise ids are the stable upstream `free-exercise-db` slugs** (e.g.
+  `Ab_Crunch_Machine`) and must never be regenerated. `LoggedSet.exerciseId`
+  references them, so rebuilding the library with fresh UUIDs would orphan every
+  logged set on an already-seeded device.
 - **Weight** is stored as a number plus the unit it was entered in (`'kg' | 'lb'`) and is **never** converted to a canonical unit on write.
 - **Distance** is stored canonically in metres as `distanceMeters`.
 - **Never hard-delete** an exercise or routine. Set `isArchived: true`.

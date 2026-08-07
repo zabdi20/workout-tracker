@@ -90,6 +90,16 @@ painful migration, so it exists from the start.
 
 Muscles are split primary/secondary so per-muscle weekly volume is meaningful.
 
+**Bundled exercise ids are the upstream `free-exercise-db` slugs, not generated
+UUIDs**, and must never be regenerated. `LoggedSet.exerciseId` references them, so
+rebuilding the library with fresh ids would orphan every logged set on a device that
+has already seeded. User-created exercises use `crypto.randomUUID()`.
+
+`Settings.libraryVersion` records which bundled-library revision was seeded, so a
+future correction can be reconciled onto an installed device without a schema
+migration. The reconciliation logic itself is deliberately deferred until there is a
+correction to ship.
+
 `equipment` is one of: `barbell`, `dumbbell`, `machine`, `cable`, `bodyweight`,
 `kettlebell`, `band`, `smith`, `ez_bar`, `other`.
 
