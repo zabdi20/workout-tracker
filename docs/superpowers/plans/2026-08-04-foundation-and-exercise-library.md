@@ -340,13 +340,13 @@ registered globally so database tests need no per-file setup."
 - Consumes: `App` from Task 2.
 - Produces: `requestPersistentStorage(): Promise<boolean>` from `src/pwa/storage.ts`. A registered service worker and a web app manifest, making the app installable and offline-capable.
 
-- [ ] **Step 1: Install the PWA plugin and a dev TLS certificate plugin**
+- [ ] **Step 1: Install the PWA plugin**
 
 ```bash
-npm install -D vite-plugin-pwa @vitejs/plugin-basic-ssl
+npm install -D vite-plugin-pwa
 ```
 
-The TLS plugin is required because Wake Lock and service workers need a secure context. `localhost` counts as secure; a LAN IP over plain HTTP does not, so testing on the phone needs HTTPS.
+No TLS plugin is needed. Wake Lock and service workers require a secure context, and `localhost` already counts as one. Device testing happens against the deployed HTTPS origin from Task 4, not a LAN address.
 
 - [ ] **Step 2: Write the icon generator**
 
@@ -527,7 +527,6 @@ Replace `vite.config.ts` with:
 import { defineConfig } from 'vite';
 import react from '@vitejs/plugin-react';
 import { VitePWA } from 'vite-plugin-pwa';
-import basicSsl from '@vitejs/plugin-basic-ssl';
 
 // GitHub Pages serves a project repo from a subpath, not the domain root.
 // Vite's base, the manifest's start_url and scope, and the service worker
@@ -539,7 +538,6 @@ export default defineConfig({
   base: BASE,
   plugins: [
     react(),
-    basicSsl(),
     VitePWA({
       registerType: 'autoUpdate',
       includeAssets: ['icon-192.png', 'icon-512.png', 'icon-512-maskable.png'],
@@ -612,7 +610,7 @@ Expected: PASS — all 5 tests pass (1 from Task 2, 4 from this task).
 
 Run: `npm run dev`
 
-Open `https://localhost:5173/workout-tracker/` on this machine. Note the subpath — with `base` set, the app is no longer at the root, and dev now matches production exactly.
+Open `http://localhost:5173/workout-tracker/` on this machine. Note the subpath — with `base` set, the app is no longer at the root, and dev now matches production exactly. `localhost` is a secure context, so the service worker registers over plain HTTP.
 
 Expected: the page renders "Workout Tracker". In DevTools → Application, the manifest is detected and a service worker is registered with scope `/workout-tracker/`.
 
@@ -627,9 +625,9 @@ Generates manifest icons with a dependency-free PNG writer, registers a
 service worker for offline use, and requests storage persistence to
 reduce the risk of iOS evicting training history.
 
-Adds a self-signed TLS cert for the dev server because Wake Lock and
-service workers require a secure context, which a LAN IP over plain
-HTTP is not."
+Sets the /workout-tracker/ base consistently across Vite, the manifest
+and the service worker scope, since GitHub Pages serves a project repo
+from a subpath."
 ```
 
 ---
