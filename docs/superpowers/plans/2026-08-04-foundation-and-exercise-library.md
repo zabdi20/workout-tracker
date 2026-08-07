@@ -612,9 +612,11 @@ Expected: PASS — all 5 tests pass (1 from Task 2, 4 from this task).
 
 - [ ] **Step 10: Verify locally**
 
-Run: `npm run dev`
+Run: `npm run build && npm run preview`
 
-Open `http://localhost:5173/workout-tracker/` on this machine. Note the subpath — with `base` set, the app is no longer at the root, and dev now matches production exactly. `localhost` is a secure context, so the service worker registers over plain HTTP.
+Open the printed `http://localhost:4173/workout-tracker/` URL. Note the subpath — with `base` set, the app is no longer at the root. `localhost` is a secure context, so the service worker registers over plain HTTP.
+
+**Use `preview`, not `dev`.** `vite-plugin-pwa` defaults `devOptions.enabled` to false, so the dev server registers no service worker and injects no manifest link. `preview` serves the real `dist/` build, which is what GitHub Pages actually ships — a more faithful check than the dev server would be even if it worked.
 
 Expected: the page renders "Workout Tracker". In DevTools → Application, the manifest is detected and a service worker is registered with scope `/workout-tracker/`.
 
