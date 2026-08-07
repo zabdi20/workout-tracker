@@ -1705,7 +1705,7 @@ export async function updateExercise(
   // isCustom is stripped for a different reason: flipping it corrupts the
   // seed gate, which counts non-custom rows to decide whether the bundled
   // library still needs seeding.
-  const { id: _id, isCustom: _isCustom, ...safe } = changes;
+  const { id: _discardedId, isCustom: _discardedIsCustom, ...safe } = changes;
   await db.exercises.update(id, safe);
 }
 
