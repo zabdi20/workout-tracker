@@ -28,6 +28,7 @@ export function LibraryScreen() {
 
       {editing && (
         <CustomExerciseForm
+          key={editing === 'new' ? 'new' : editing.id}
           existing={editing === 'new' ? undefined : editing}
           onDone={() => setEditing(null)}
           onCancel={() => setEditing(null)}

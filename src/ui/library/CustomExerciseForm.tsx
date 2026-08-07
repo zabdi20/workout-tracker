@@ -54,7 +54,7 @@ export function CustomExerciseForm({ existing, onDone, onCancel }: Props) {
         });
       } else {
         await createCustomExercise({
-          name,
+          name: name.trim(),
           equipment,
           primaryMuscles: [primary],
           secondaryMuscles: [],

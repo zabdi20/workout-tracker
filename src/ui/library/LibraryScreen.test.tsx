@@ -85,3 +85,26 @@ it('clears all filters at once', async () => {
   expect(await screen.findByText('Barbell Squat')).toBeInTheDocument();
   expect(screen.getByText('Barbell Bench Press')).toBeInTheDocument();
 });
+
+it('swaps the edit form to the newly clicked exercise instead of keeping the stale one open', async () => {
+  const user = userEvent.setup();
+  await createCustomExercise({
+    name: 'Cable Fly', primaryMuscles: ['chest'], secondaryMuscles: [],
+    equipment: 'cable', measurementType: 'weight_reps',
+  });
+  await createCustomExercise({
+    name: 'Pec Deck', primaryMuscles: ['chest'], secondaryMuscles: [],
+    equipment: 'machine', measurementType: 'weight_reps',
+  });
+
+  render(<LibraryScreen />);
+  await screen.findByText('Cable Fly');
+
+  await user.click(screen.getByText('Cable Fly'));
+  expect(await screen.findByLabelText(/exercise name/i)).toHaveValue('Cable Fly');
+
+  // Without closing the form, click a different custom exercise.
+  await user.click(screen.getByText('Pec Deck'));
+
+  expect(await screen.findByLabelText(/exercise name/i)).toHaveValue('Pec Deck');
+});
