@@ -10,9 +10,9 @@
 
 **Source spec:** `docs/superpowers/specs/2026-08-04-workout-tracker-design.md`
 
-**Scope:** This is Plan 1 of 4. It ends with an app deployed to `https://hshadic123.github.io/workout-tracker/`, installed on the iPhone home screen, working offline, providing the full exercise library. Routines, cycles, session logging, and backup are Plans 2–4.
+**Scope:** This is Plan 1 of 4. It ends with an app deployed to `https://zabdi20.github.io/workout-tracker/`, installed on the iPhone home screen, working offline, providing the full exercise library. Routines, cycles, session logging, and backup are Plans 2–4.
 
-**Hosting:** GitHub Pages, project repo `hshadic123/workout-tracker`, served from the subpath `/workout-tracker/`. Deployment lands in Task 4 rather than at the end of the plan so that every device verification from Task 5 onward runs against the origin the app will actually live at — no self-signed certificate warnings, no LAN dependency, and no risk of installing a PWA bound to an address that disappears.
+**Hosting:** GitHub Pages, project repo `zabdi20/workout-tracker`, served from the subpath `/workout-tracker/`. Deployment lands in Task 4 rather than at the end of the plan so that every device verification from Task 5 onward runs against the origin the app will actually live at — no self-signed certificate warnings, no LAN dependency, and no risk of installing a PWA bound to an address that disappears.
 
 ## Global Constraints
 
@@ -651,7 +651,7 @@ from a subpath."
 
 **Interfaces:**
 - Consumes: the production build configured in Task 3.
-- Produces: a stable public HTTPS origin, `https://hshadic123.github.io/workout-tracker/`. Every device verification from Task 5 onward uses it in place of a LAN address.
+- Produces: a stable public HTTPS origin, `https://zabdi20.github.io/workout-tracker/`. Every device verification from Task 5 onward uses it in place of a LAN address.
 
 This sits here rather than at the end of the plan so every later device verification runs against the origin the app will permanently live at. Testing against a LAN dev server instead means a self-signed certificate warning each session, an address that changes between sessions, and a real risk of installing a PWA bound to an origin that later disappears — which would silently orphan its database.
 
@@ -725,7 +725,7 @@ Public is required because GitHub Pages on a private repository needs a paid pla
 - [ ] **Step 4: Push**
 
 ```bash
-git remote add origin https://github.com/hshadic123/workout-tracker.git && git push -u origin main
+git remote add origin https://github.com/zabdi20/workout-tracker.git && git push -u origin main
 ```
 
 Expected: the push succeeds and commits appear on GitHub. Authentication prompts for a browser sign-in or a personal access token.
@@ -743,14 +743,14 @@ Expected: both the `build` and `deploy` jobs pass. If `npm test` fails, the depl
 Then confirm the site is live:
 
 ```bash
-curl -sSI https://hshadic123.github.io/workout-tracker/ | head -1
+curl -sSI https://zabdi20.github.io/workout-tracker/ | head -1
 ```
 
 Expected: `HTTP/2 200`. The first deploy can take a few minutes to propagate.
 
 - [ ] **Step 7: Install on the iPhone**
 
-On the phone, open `https://hshadic123.github.io/workout-tracker/` in Safari. Real HTTPS, no certificate warning, and it works on any network — including the residential one that blocks LAN access.
+On the phone, open `https://zabdi20.github.io/workout-tracker/` in Safari. Real HTTPS, no certificate warning, and it works on any network — including the residential one that blocks LAN access.
 
 Tap **Share → Add to Home Screen**, then launch it from the icon.
 
@@ -2903,7 +2903,7 @@ deletion, since deleting would orphan logged sets."
 
 - [ ] `npm test` passes with no failures.
 - [ ] `npm run build` completes with no type errors.
-- [ ] The GitHub Actions deploy workflow is green and `https://hshadic123.github.io/workout-tracker/` returns 200.
+- [ ] The GitHub Actions deploy workflow is green and `https://zabdi20.github.io/workout-tracker/` returns 200.
 - [ ] The app is installed on the iPhone home screen from that URL and opens without browser chrome.
 - [ ] The library loads offline in Airplane Mode.
 - [ ] A custom exercise survives closing and reopening the app.

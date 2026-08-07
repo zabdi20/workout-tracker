@@ -24,7 +24,7 @@ Accepted consequences:
 - No Apple Watch app.
 - No HealthKit integration.
 - No App Store distribution; installed via Safari "Add to Home Screen" from
-  <https://hshadic123.github.io/workout-tracker/>.
+  <https://zabdi20.github.io/workout-tracker/>.
 - iOS reclaims web storage more aggressively than native app storage, which
   promotes backup/export from a nice-to-have to a v1 requirement.
 - No haptic alerts. The Vibration API is unsupported in iOS Safari, which constrains
@@ -41,7 +41,7 @@ for the two things this app needs: a fast list/form UI and decent charts.
 
 **No backend.** No server, no accounts, no sync, no recurring cost. All data is local.
 
-**Hosting: GitHub Pages**, project repo `hshadic123/workout-tracker`, served from the
+**Hosting: GitHub Pages**, project repo `zabdi20/workout-tracker`, served from the
 subpath `/workout-tracker/`. This is static file hosting, not a backend — it serves the
 app and never sees training data.
 
