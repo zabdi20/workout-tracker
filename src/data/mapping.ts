@@ -50,7 +50,7 @@ const MUSCLE: Record<string, MuscleGroup> = {
 /** Exercises whose measurement type the general rules get wrong. */
 const MEASUREMENT_OVERRIDES: Array<[RegExp, MeasurementType]> = [
   [/\bassisted\b/i, 'assisted_reps'],
-  [/\b(plank|hold|hang|iron cross|l-sit)\b/i, 'duration'],
+  [/\b(plank|hold|iron cross|l-sit)\b|\bdead hang\b/i, 'duration'],
   [/\bfarmer'?s walk\b/i, 'weight_duration'],
 ];
 

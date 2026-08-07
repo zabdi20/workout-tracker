@@ -75,6 +75,16 @@ describe('inferMeasurementType', () => {
     expect(inferMeasurementType(source({ name: 'Assisted Pull-Up', equipment: 'machine' })))
       .toBe('assisted_reps');
   });
+
+  it('treats hang clean/snatch variants as weight_reps, not duration', () => {
+    expect(inferMeasurementType(source({ name: 'Hang Clean', equipment: 'barbell' })))
+      .toBe('weight_reps');
+  });
+
+  it('treats dead hang as duration', () => {
+    expect(inferMeasurementType(source({ name: 'Dead Hang', equipment: 'body only' })))
+      .toBe('duration');
+  });
 });
 
 describe('shouldInclude', () => {

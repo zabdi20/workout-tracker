@@ -158,7 +158,7 @@
       "traps"
     ],
     "equipment": "kettlebell",
-    "measurementType": "duration",
+    "measurementType": "weight_reps",
     "instructions": "Place two kettlebells between your feet. To get in the starting position, push your butt back and look straight ahead. Clean one kettlebell to your shoulder and hold on to the other kettlebell in a hanging position. Clean the kettlebell to your shoulder by extending through the legs and hips as you pull the kettlebell towards your shoulders. Rotate your wrist as you do so. Lower the cleaned kettlebell to a hanging position and clean the alternate kettlebell. Repeat.",
     "isCustom": false,
     "isArchived": false
@@ -1141,7 +1141,7 @@
       "delts"
     ],
     "equipment": "kettlebell",
-    "measurementType": "duration",
+    "measurementType": "weight_reps",
     "instructions": "Initiate the exercise by standing upright with a kettlebell in one hand. Swing the kettlebell back forcefully and then reverse the motion forcefully. Crush the kettlebell handle as hard as possible and raise the kettlebell to your shoulder.",
     "isCustom": false,
     "isArchived": false
@@ -2379,7 +2379,7 @@
       "traps"
     ],
     "equipment": "kettlebell",
-    "measurementType": "duration",
+    "measurementType": "weight_reps",
     "instructions": "Place two kettlebells between your feet. To get in the starting position, push your butt back and look straight ahead. Clean one kettlebell to your shoulder and hold on to the other kettlebell. With a fluid motion, lower the top kettlebell while driving the bottom kettlebell up.",
     "isCustom": false,
     "isArchived": false
@@ -3540,7 +3540,7 @@
       "traps"
     ],
     "equipment": "barbell",
-    "measurementType": "duration",
+    "measurementType": "weight_reps",
     "instructions": "Begin with a shoulder width, double overhand or hook grip, with the bar hanging at the mid thigh position. Your back should be straight and inclined slightly forward. Begin by aggressively extending through the hips, knees and ankles, driving the weight upward. As you do so, shrug your shoulders towards your ears. Immediately recover by driving through the heels, keeping the torso upright and elbows up. Continue until you have risen to a standing position.",
     "isCustom": false,
     "isArchived": false
@@ -3561,7 +3561,7 @@
       "traps"
     ],
     "equipment": "barbell",
-    "measurementType": "duration",
+    "measurementType": "weight_reps",
     "instructions": "Begin with a shoulder width, double overhand or hook grip, with the bar hanging just below the knees. Your back should be straight and inclined slightly forward. Begin by aggressively extending through the hips, knees and ankles, driving the weight upward. As you do so, shrug your shoulders towards your ears. As full extension is achieved, transition into the third pull by aggressively shrugging and flexing the arms with the elbows up and out. At peak extension, aggressively pull yourself down, rotating your elbows under the bar as you do so. Receive the bar in a front squat position, the depth of which is dependent upon the height of the bar at the end of the third pull. The bar should be racked onto the protracted shoulders, lightly touching the throat with the hands relaxed. Continue to descend to the bottom squat position, which will help in the recovery. Immediately recover by driving through the heels, keeping the torso upright and elbows up. Continue until you have risen to a standing position.",
     "isCustom": false,
     "isArchived": false
@@ -3583,7 +3583,7 @@
       "traps"
     ],
     "equipment": "barbell",
-    "measurementType": "duration",
+    "measurementType": "weight_reps",
     "instructions": "Begin with a wide grip on the bar, with an overhand or hook grip. The feet should be directly below the hips with the feet turned out. Your knees should be slightly bent, and the torso inclined forward. The spine should be fully extended and the head facing forward. The bar should be at the hips. This will be your starting position. Aggressively extend through the legs and hips. At peak extension, shrug the shoulders and allow the elbows to flex to the side. As you move your feet into the receiving position, forcefully pull yourself below the bar as you elevate the bar overhead. Receive the bar with your body as low as possible and the arms fully extended overhead. Return to a standing position with the weight overhead. Follow by returning the weight to the ground under control.",
     "isCustom": false,
     "isArchived": false
@@ -3605,7 +3605,7 @@
       "traps"
     ],
     "equipment": "barbell",
-    "measurementType": "duration",
+    "measurementType": "weight_reps",
     "instructions": "Begin with a wide grip on the bar, with an overhand or hook grip. The feet should be directly below the hips with the feet turned out. Your knees should be slightly bent, and the torso inclined forward. The spine should be fully extended and the head facing forward. The bar should be just below the knees. This will be your starting position. Aggressively extend through the legs and hips. At peak extension, shrug the shoulders and allow the elbows to flex to the side. As you move your feet into the receiving position, forcefully pull yourself below the bar as you elevate the bar overhead. Receive the bar with your body as low as possible and the arms fully extended overhead. Return to a standing position with the weight overhead, and then return the weight to the floor under control.",
     "isCustom": false,
     "isArchived": false
@@ -4226,7 +4226,7 @@
       "traps"
     ],
     "equipment": "kettlebell",
-    "measurementType": "duration",
+    "measurementType": "weight_reps",
     "instructions": "Place kettlebell between your feet. To get in the starting position, push your butt back and look straight ahead. Clean kettlebell to your shoulder. Clean the kettlebell to your shoulders by extending through the legs and hips as you raise the kettlebell towards your shoulder. The wrist should rotate as you do so. Lower kettlebell to a hanging position between your legs while keeping the hamstrings loaded. Keep your head up at all times.",
     "isCustom": false,
     "isArchived": false
@@ -7340,7 +7340,7 @@
       "traps"
     ],
     "equipment": "machine",
-    "measurementType": "duration",
+    "measurementType": "weight_reps",
     "instructions": "Position the bar at knee height and load it to an appropriate weight. Take a pronated grip on the bar outside of shoulder width and unhook the bar from the machine. Your arms should be fully extended with your head and chest up. Your elbows should be pointed out with your shoulders back and down. Your hips should be back, loading the tension into the hamstrings. This will be your starting position. Initate the movement by forcefully extending the hips and knees, accelerating into the bar. Ensure that you keep your arms straight during this part of the motion. Upon full extension, rebend the hips and knees to lower your receiving position. Allow the arms to flex at this point, rotating the elbows around the bar to receive it on your shoulders. Extend through the hips and knees to come to a standing position with the bar racked on your shoulders to complete the movement.",
     "isCustom": false,
     "isArchived": false
