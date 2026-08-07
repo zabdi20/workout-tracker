@@ -393,5 +393,21 @@ fails silently in a gym.
 
 ### Deferred
 
-Whether estimated 1RM should offer formulas other than Epley (Brzycki, Lombardi) is
-deferred to v2, when charts make the difference visible.
+**Background alerting via the Shortcuts URL scheme.** Not yet tested. Since the PWA
+itself cannot make noise in the background, the remaining idea is to hand the job to
+something that is allowed to: `shortcuts://run-shortcut` is a public, documented URL
+scheme that accepts input, so a hand-made Shortcut could start a native Clock timer.
+The native timer then fires on a locked screen because it is iOS's own, not ours.
+
+Unknowns: whether a custom URL scheme fires from a standalone PWA, whether Shortcuts
+returns cleanly to the app, and how disruptive an app-switch per set feels in practice.
+
+Costs regardless of outcome: one-time manual setup the app cannot perform on the user's
+behalf, and a visible app bounce on every rest. If it works it ships as an **optional**
+setting for pocketed-phone training; the foreground tone and Wake Lock remain the
+default, since they require no setup.
+
+Revisit after Plan 1. Does not block anything.
+
+**Estimated 1RM formulas.** Whether to offer alternatives to Epley (Brzycki,
+Lombardi) is deferred to v2, when charts make the difference visible.
