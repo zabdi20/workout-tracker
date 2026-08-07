@@ -9,6 +9,10 @@ beforeEach(async () => {
 it('renders the app title', async () => {
   render(<App />);
   expect(screen.getByRole('heading', { name: /workout tracker/i })).toBeInTheDocument();
+  // Let the seedExercisesIfEmpty() started by render() above settle within
+  // this test, rather than leaving its transaction in flight when the next
+  // test's beforeEach calls resetDbForTests().
+  await screen.findByRole('heading', { name: /exercises/i });
 });
 
 it('seeds the library on first run and shows it', async () => {
