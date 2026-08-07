@@ -93,7 +93,10 @@ describe('[exerciseId+completedAt] index', () => {
   });
 });
 
-describe('archived-state filtering', () => {
+// Documents the intended in-memory access pattern for un-indexed fields (see
+// the "index schema regression guard" describe block below for the test that
+// actually protects against these fields being re-indexed).
+describe('in-memory filtering pattern for un-indexed fields', () => {
   it('filters archived exercises in memory rather than via an indexed query', async () => {
     const active = makeExercise({ name: 'Active Exercise', isArchived: false });
     const archived = makeExercise({ name: 'Archived Exercise', isArchived: true });
@@ -105,6 +108,40 @@ describe('archived-state filtering', () => {
     const nonArchived = (await db.exercises.toArray()).filter((e) => !e.isArchived);
 
     expect(nonArchived.map((e) => e.id)).toEqual([active.id]);
+  });
+});
+
+describe('index schema regression guard', () => {
+  // IndexedDB cannot key on booleans or `null`. A field with one of these
+  // runtime types writes fine when indexed, but throws the moment anyone runs
+  // `.where(field).equals(...)` against it. exercises.isCustom/isArchived,
+  // routines.isArchived, and cycles.isActive are booleans; sessions.routineId
+  // is `string | null`. All five are deliberately left out of the index
+  // strings in db.ts's `stores({...})` and must be queried via toArray() +
+  // in-memory filter instead (see the describe block above).
+  //
+  // If this test fails, one of these fields was just re-added to a
+  // `stores({...})` index string in db.ts. Fix db.ts, don't delete this
+  // assertion — the field genuinely cannot be indexed.
+  it('does not index fields that cannot be IndexedDB keys (boolean or nullable)', () => {
+    expect(Object.keys(db.exercises.schema.idxByName)).not.toContain('isCustom');
+    expect(Object.keys(db.exercises.schema.idxByName)).not.toContain('isArchived');
+    expect(Object.keys(db.routines.schema.idxByName)).not.toContain('isArchived');
+    expect(Object.keys(db.cycles.schema.idxByName)).not.toContain('isActive');
+    expect(Object.keys(db.sessions.schema.idxByName)).not.toContain('routineId');
+  });
+
+  // The compound index on `sets` serves the app's hottest query -- "what did
+  // I do last time on this exercise?" -- rendered as a reference for every
+  // set of every workout. Losing it silently degrades that query from an
+  // indexed range scan to a full-table scan with no visible error, so it
+  // needs its own explicit assertion (the tests above only check for the
+  // *absence* of indexes).
+  it('keeps the compound [exerciseId+completedAt] index on sets', () => {
+    const idx = db.sets.schema.idxByName['[exerciseId+completedAt]'];
+    expect(idx).toBeDefined();
+    expect(idx.compound).toBe(true);
+    expect(idx.keyPath).toEqual(['exerciseId', 'completedAt']);
   });
 });
 
