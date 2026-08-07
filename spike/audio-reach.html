@@ -113,10 +113,19 @@ function silenceThenToneWavUrl(silenceSeconds, freq, toneSeconds) {
   return URL.createObjectURL(new Blob([buf], { type: 'audio/wav' }));
 }
 
-const keepalive = new Audio(silentWavUrl(1));
-keepalive.loop = true;
-const tone = new Audio(toneWavUrl(880, 1.2));
-const oneShot = new Audio(silenceThenToneWavUrl(30, 880, 1.5));
+// Built lazily on first interaction, NOT at page load. Constructing Audio
+// elements eagerly makes it impossible to tell whether merely opening the
+// page claimed the audio session, or whether a test did.
+let keepalive = null, tone = null, oneShot = null;
+
+function ensureAudio() {
+  if (oneShot) return;
+  keepalive = new Audio(silentWavUrl(1));
+  keepalive.loop = true;
+  tone = new Audio(toneWavUrl(880, 1.2));
+  oneShot = new Audio(silenceThenToneWavUrl(30, 880, 1.5));
+  log('audio elements created');
+}
 
 /**
  * The audio session category decides whether playback survives backgrounding.
@@ -168,6 +177,7 @@ function run(useKeepalive) {
 
   log('UA: ' + navigator.userAgent);
   log('standalone: ' + (window.navigator.standalone === true));
+  ensureAudio();
   requestSession();
 
   // Both play() calls are issued synchronously inside the gesture.
@@ -208,7 +218,8 @@ function runOneShot() {
 
   log('UA: ' + navigator.userAgent);
   log('standalone: ' + (window.navigator.standalone === true));
-  // Category first, then play - all synchronous, so user activation survives.
+  // Create, set category, then play - all synchronous, so user activation survives.
+  ensureAudio();
   requestSession();
 
   oneShot.currentTime = 0;
@@ -236,6 +247,7 @@ function runOneShot() {
 
 document.addEventListener('visibilitychange', () => {
   log('visibility -> ' + document.visibilityState);
+  if (!oneShot) { log('  (no audio created yet)'); return; }
   // The decisive diagnostic. If currentTime advanced by roughly the time you
   // were away, audio kept playing while backgrounded. If it is frozen near
   // where you left, iOS suspended playback and no audio approach can work.
@@ -266,6 +278,8 @@ document.getElementById('start').onclick = () => run(true);
 document.getElementById('startNoKeepalive').onclick = () => run(false);
 document.getElementById('toneNow').onclick = () => {
   logEl.textContent = '';
+  ensureAudio();
+  requestSession();
   tone.play()
     .then(() => log('direct tone play OK - the WAV itself is fine'))
     .catch(e => log('direct tone play FAILED: ' + e.name + ' - ' + e.message));
