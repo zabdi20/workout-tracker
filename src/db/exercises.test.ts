@@ -154,4 +154,42 @@ describe('updateExercise', () => {
     const updated = await getExercise(ex.id);
     expect(updated?.isCustom).toBe(true);
   });
+
+  it('rejects a blank name, mirroring createCustomExercise', async () => {
+    const ex = await createCustomExercise({
+      name: 'Cable Fly', primaryMuscles: ['chest'], secondaryMuscles: [],
+      equipment: 'cable', measurementType: 'weight_reps',
+    });
+
+    await expect(updateExercise(ex.id, { name: '   ' })).rejects.toThrow(/name/i);
+
+    const unchanged = await getExercise(ex.id);
+    expect(unchanged?.name).toBe('Cable Fly');
+  });
+
+  it('rejects clearing primaryMuscles to empty, mirroring createCustomExercise', async () => {
+    const ex = await createCustomExercise({
+      name: 'Cable Fly', primaryMuscles: ['chest'], secondaryMuscles: [],
+      equipment: 'cable', measurementType: 'weight_reps',
+    });
+
+    await expect(updateExercise(ex.id, { primaryMuscles: [] })).rejects.toThrow(/primary muscle/i);
+
+    const unchanged = await getExercise(ex.id);
+    expect(unchanged?.primaryMuscles).toEqual(['chest']);
+  });
+
+  it('allows a partial update that omits name and primaryMuscles entirely', async () => {
+    const ex = await createCustomExercise({
+      name: 'Cable Fly', primaryMuscles: ['chest'], secondaryMuscles: [],
+      equipment: 'cable', measurementType: 'weight_reps',
+    });
+
+    await updateExercise(ex.id, { equipment: 'machine' });
+
+    const updated = await getExercise(ex.id);
+    expect(updated?.equipment).toBe('machine');
+    expect(updated?.name).toBe('Cable Fly');
+    expect(updated?.primaryMuscles).toEqual(['chest']);
+  });
 });

@@ -1,5 +1,5 @@
-import { db, resetDbForTests } from './db';
-import { seedExercisesIfEmpty } from './seed';
+import { db, SETTINGS_ID, resetDbForTests } from './db';
+import { seedExercisesIfEmpty, LIBRARY_VERSION } from './seed';
 import { createCustomExercise, archiveExercise, getExercise } from './exercises';
 
 beforeEach(async () => {
@@ -61,5 +61,29 @@ describe('seedExercisesIfEmpty', () => {
     await seedExercisesIfEmpty();
 
     expect((await getExercise(first.id))?.isArchived).toBe(true);
+  });
+
+  it('exports the current bundled-library revision', () => {
+    expect(LIBRARY_VERSION).toBe(1);
+  });
+
+  it('stamps the settings singleton with the seeded library version', async () => {
+    await seedExercisesIfEmpty();
+
+    const settings = await db.settings.get(SETTINGS_ID);
+    expect(settings).toBeDefined();
+    expect(settings?.libraryVersion).toBe(1);
+  });
+
+  it('leaves settings unchanged on a no-op seed', async () => {
+    await seedExercisesIfEmpty();
+    const before = await db.settings.get(SETTINGS_ID);
+    expect(before).toBeDefined();
+
+    const inserted = await seedExercisesIfEmpty();
+
+    expect(inserted).toBe(0);
+    const after = await db.settings.get(SETTINGS_ID);
+    expect(after).toEqual(before);
   });
 });

@@ -127,4 +127,9 @@ export interface Settings {
   defaultRestSeconds: number;
   lastBackupAt?: number;
   restAlertSound: boolean;
+  /** Which bundled-library revision was seeded onto this device. Lets a
+   *  future upgrade path reconcile corrected bundled data on devices that
+   *  seeded an earlier revision, without needing a schema migration. Unset
+   *  on devices seeded before this field existed. */
+  libraryVersion?: number;
 }

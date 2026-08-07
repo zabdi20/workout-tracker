@@ -45,6 +45,16 @@ export async function updateExercise(
   id: string,
   changes: Partial<Exercise>,
 ): Promise<void> {
+  // Mirrors the invariants createCustomExercise enforces at creation time.
+  // Only fields actually present in `changes` are validated, so a partial
+  // update that leaves name/primaryMuscles untouched is unaffected.
+  if (changes.name !== undefined && !changes.name.trim()) {
+    throw new Error('Exercise name is required');
+  }
+  if (changes.primaryMuscles !== undefined && changes.primaryMuscles.length === 0) {
+    throw new Error('At least one primary muscle is required');
+  }
+
   // Dexie turns an `id` inside `changes` into delete-then-add under the new
   // key. That is a real hard delete, and it would orphan every LoggedSet
   // referencing the old id — exactly what archiving exists to prevent.
