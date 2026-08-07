@@ -40,3 +40,48 @@ it('tells the user when nothing matches', async () => {
 
   expect(await screen.findByText(/no exercises match/i)).toBeInTheDocument();
 });
+
+it('filters by equipment', async () => {
+  const user = userEvent.setup();
+  await createCustomExercise({
+    name: 'Cable Fly', primaryMuscles: ['chest'], secondaryMuscles: [],
+    equipment: 'cable', measurementType: 'weight_reps',
+  });
+
+  render(<LibraryScreen />);
+  await screen.findByText('Cable Fly');
+
+  await user.click(screen.getByRole('button', { name: /filters/i }));
+  await user.click(screen.getByRole('checkbox', { name: 'Cable' }));
+
+  expect(await screen.findByText('Cable Fly')).toBeInTheDocument();
+  expect(screen.queryByText('Barbell Squat')).not.toBeInTheDocument();
+});
+
+it('filters by muscle, matching secondary muscles too', async () => {
+  const user = userEvent.setup();
+  render(<LibraryScreen />);
+  await screen.findByText('Barbell Squat');
+
+  await user.click(screen.getByRole('button', { name: /filters/i }));
+  await user.click(screen.getByRole('checkbox', { name: 'Triceps' }));
+
+  // Bench lists triceps as a secondary muscle; squat does not work them.
+  expect(await screen.findByText('Barbell Bench Press')).toBeInTheDocument();
+  expect(screen.queryByText('Barbell Squat')).not.toBeInTheDocument();
+});
+
+it('clears all filters at once', async () => {
+  const user = userEvent.setup();
+  render(<LibraryScreen />);
+  await screen.findByText('Barbell Squat');
+
+  await user.click(screen.getByRole('button', { name: /filters/i }));
+  await user.click(screen.getByRole('checkbox', { name: 'Triceps' }));
+  await screen.findByText('Barbell Bench Press');
+
+  await user.click(screen.getByRole('button', { name: /clear filters/i }));
+
+  expect(await screen.findByText('Barbell Squat')).toBeInTheDocument();
+  expect(screen.getByText('Barbell Bench Press')).toBeInTheDocument();
+});

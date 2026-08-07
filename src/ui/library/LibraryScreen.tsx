@@ -1,17 +1,23 @@
 import { useMemo, useState } from 'react';
 import { useLiveQuery } from 'dexie-react-hooks';
 import { listExercises } from '../../db/exercises';
-import { EMPTY_FILTER, filterExercises, type ExerciseFilter } from '../../domain/exerciseFilter';
+import {
+  EMPTY_FILTER, filterExercises, isFilterActive, type ExerciseFilter,
+} from '../../domain/exerciseFilter';
 import { ExerciseList } from './ExerciseList';
+import { FilterSheet } from './FilterSheet';
 
 export function LibraryScreen() {
   const [filter, setFilter] = useState<ExerciseFilter>(EMPTY_FILTER);
+  const [showFilters, setShowFilters] = useState(false);
   const exercises = useLiveQuery(() => listExercises(), []);
 
   const visible = useMemo(
     () => filterExercises(exercises ?? [], filter),
     [exercises, filter],
   );
+
+  const activeCount = filter.muscles.length + filter.equipment.length;
 
   return (
     <section>
@@ -24,6 +30,19 @@ export function LibraryScreen() {
         value={filter.query}
         onChange={(e) => setFilter((f) => ({ ...f, query: e.target.value }))}
       />
+
+      <div className="filter-controls">
+        <button type="button" onClick={() => setShowFilters((s) => !s)}>
+          Filters{activeCount > 0 ? ` (${activeCount})` : ''}
+        </button>
+        {isFilterActive(filter) && (
+          <button type="button" onClick={() => setFilter(EMPTY_FILTER)}>
+            Clear filters
+          </button>
+        )}
+      </div>
+
+      {showFilters && <FilterSheet filter={filter} onChange={setFilter} />}
 
       {exercises === undefined ? (
         <p>Loading…</p>
