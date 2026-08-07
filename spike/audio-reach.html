@@ -22,10 +22,20 @@
 <h1>Rest alert reach</h1>
 <p class="hint">Press a button, then immediately switch apps or lock the phone.
 Listen for a beep after 30 seconds.</p>
+<label class="hint">Audio session category:
+  <select id="sessionType" style="font-size:17px;padding:8px;width:100%;margin:6px 0;">
+    <option value="playback" selected>playback — survives background, interrupts music</option>
+    <option value="ambient">ambient — mixes with music, dies in background</option>
+    <option value="auto">auto — platform default</option>
+    <option value="none">none — don't set it at all</option>
+  </select>
+</label>
 <div id="count">--</div>
-<button id="start">Start 30s test</button>
-<button id="startNoKeepalive" class="secondary">Start 30s test (no keepalive)</button>
-<button id="toneNow" class="secondary">Play tone now (sanity check)</button>
+<button id="startOneShot">A: 30s one-shot track (best bet)</button>
+<button id="start" class="secondary">B: 30s keepalive + JS-timed tone</button>
+<button id="startNoKeepalive" class="secondary">C: 30s JS-timed, no keepalive</button>
+<button id="toneNow" class="secondary">D: Play tone now (sanity check)</button>
+<button id="copyLog" class="secondary">Copy log to clipboard</button>
 <div id="log"></div>
 
 <script>
@@ -78,20 +88,54 @@ function toneWavUrl(freq, seconds) {
   return URL.createObjectURL(new Blob([buf], { type: 'audio/wav' }));
 }
 
+/**
+ * One track: `silenceSeconds` of silence, then the beep. Started inside the
+ * user gesture and left to play through, so NO JavaScript needs to run at
+ * fire time. This matters because iOS suspends timers in backgrounded tabs -
+ * an approach that calls play() from a setInterval callback cannot fire if
+ * the tab is frozen, no matter how the deadline is computed.
+ */
+function silenceThenToneWavUrl(silenceSeconds, freq, toneSeconds) {
+  const sampleRate = 8000;
+  const nSil = Math.floor(sampleRate * silenceSeconds);
+  const nTone = Math.floor(sampleRate * toneSeconds);
+  const n = nSil + nTone;
+  const buf = new ArrayBuffer(44 + n);
+  const view = new DataView(buf);
+  wavHeader(view, n, sampleRate);
+  for (let i = 0; i < nSil; i++) view.setUint8(44 + i, 128);
+  for (let i = 0; i < nTone; i++) {
+    const t = i / sampleRate;
+    const env = Math.min(1, t * 20, (toneSeconds - t) * 20);
+    const v = Math.sin(2 * Math.PI * freq * t) * env;
+    view.setUint8(44 + nSil + i, Math.max(0, Math.min(255, Math.round(128 + v * 100))));
+  }
+  return URL.createObjectURL(new Blob([buf], { type: 'audio/wav' }));
+}
+
 const keepalive = new Audio(silentWavUrl(1));
 keepalive.loop = true;
 const tone = new Audio(toneWavUrl(880, 1.2));
+const oneShot = new Audio(silenceThenToneWavUrl(30, 880, 1.5));
 
-async function requestAmbient() {
-  if ('audioSession' in navigator) {
-    try {
-      navigator.audioSession.type = 'ambient';
-      log('audioSession.type set to "ambient" -> ' + navigator.audioSession.type);
-    } catch (e) {
-      log('audioSession set FAILED: ' + e.message);
-    }
-  } else {
-    log('navigator.audioSession NOT available');
+/**
+ * The audio session category decides whether playback survives backgrounding.
+ *   ambient  - mixes with other audio, but is silenced when backgrounded
+ *              or when the ringer switch is off. Measured: playback froze.
+ *   playback - media intended to keep running in the background. Takes over
+ *              the audio session, so it interrupts the user's own music.
+ *   auto     - leave it to the platform.
+ * Must be set BEFORE play() for the category to apply to that playback.
+ */
+function requestSession() {
+  const want = document.getElementById('sessionType').value;
+  if (want === 'none') { log('audioSession: left at platform default'); return; }
+  if (!('audioSession' in navigator)) { log('navigator.audioSession NOT available'); return; }
+  try {
+    navigator.audioSession.type = want;
+    log('audioSession.type = "' + want + '" -> actual: ' + navigator.audioSession.type);
+  } catch (e) {
+    log('audioSession set FAILED: ' + e.message);
   }
 }
 
@@ -122,15 +166,16 @@ function run(useKeepalive) {
   running = true;
   logEl.textContent = '';
 
+  log('UA: ' + navigator.userAgent);
+  log('standalone: ' + (window.navigator.standalone === true));
+  requestSession();
+
   // Both play() calls are issued synchronously inside the gesture.
   const primed = primeTone();
   const kaStarted = useKeepalive
     ? keepalive.play().then(() => 'keepalive playing').catch(e => 'keepalive FAILED: ' + e.message)
     : Promise.resolve('keepalive skipped');
 
-  log('UA: ' + navigator.userAgent);
-  log('standalone: ' + (window.navigator.standalone === true));
-  requestAmbient();
   primed.then(log);
   kaStarted.then(log);
 
@@ -151,10 +196,72 @@ function run(useKeepalive) {
   }, 250);
 }
 
+/**
+ * Mode A. Starts one pre-rendered track inside the gesture and lets it run.
+ * The countdown here is cosmetic only - if it freezes while backgrounded
+ * that is expected and does not affect whether the beep fires.
+ */
+function runOneShot() {
+  if (running) { log('already running'); return; }
+  running = true;
+  logEl.textContent = '';
+
+  log('UA: ' + navigator.userAgent);
+  log('standalone: ' + (window.navigator.standalone === true));
+  // Category first, then play - all synchronous, so user activation survives.
+  requestSession();
+
+  oneShot.currentTime = 0;
+  const started = oneShot.play()
+    .then(() => 'one-shot playing; beep is baked in at 30s, no JS needed to fire it')
+    .catch(e => 'one-shot play FAILED: ' + e.name + ' - ' + e.message);
+
+  started.then(log);
+
+  oneShot.addEventListener('ended', () => {
+    log('one-shot ENDED - playback ran to completion');
+    running = false;
+  }, { once: true });
+
+  const end = Date.now() + 30000;
+  const tick = setInterval(() => {
+    const left = Math.max(0, Math.ceil((end - Date.now()) / 1000));
+    countEl.textContent = left;
+    if (left === 0) {
+      clearInterval(tick);
+      log('cosmetic countdown hit zero (visibility=' + document.visibilityState + ')');
+    }
+  }, 250);
+}
+
 document.addEventListener('visibilitychange', () => {
   log('visibility -> ' + document.visibilityState);
+  // The decisive diagnostic. If currentTime advanced by roughly the time you
+  // were away, audio kept playing while backgrounded. If it is frozen near
+  // where you left, iOS suspended playback and no audio approach can work.
+  log('  oneShot.currentTime=' + oneShot.currentTime.toFixed(1) +
+      ' paused=' + oneShot.paused);
+  log('  keepalive.paused=' + keepalive.paused);
 });
 
+document.getElementById('copyLog').onclick = async () => {
+  const text = logEl.textContent;
+  try {
+    await navigator.clipboard.writeText(text);
+    log('--- log copied to clipboard ---');
+  } catch (e) {
+    // Clipboard API needs a secure context; plain HTTP over LAN is not one.
+    // Select the text instead so a long-press gives Copy.
+    const range = document.createRange();
+    range.selectNodeContents(logEl);
+    const sel = window.getSelection();
+    sel.removeAllRanges();
+    sel.addRange(range);
+    log('--- clipboard blocked (needs HTTPS); log is selected, long-press to Copy ---');
+  }
+};
+
+document.getElementById('startOneShot').onclick = runOneShot;
 document.getElementById('start').onclick = () => run(true);
 document.getElementById('startNoKeepalive').onclick = () => run(false);
 document.getElementById('toneNow').onclick = () => {
