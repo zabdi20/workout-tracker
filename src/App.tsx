@@ -1,31 +1,19 @@
-import { useEffect, useState } from 'react';
-import { seedExercisesIfEmpty } from './db/seed';
+import { BrowserRouter, Route, Routes } from 'react-router-dom';
+import { AppLayout } from './ui/AppLayout';
 import { LibraryScreen } from './ui/library/LibraryScreen';
 
 export function App() {
-  const [ready, setReady] = useState(false);
-  const [error, setError] = useState<string | null>(null);
-
-  useEffect(() => {
-    seedExercisesIfEmpty()
-      .then(() => setReady(true))
-      .catch((e: unknown) => {
-        // Failing loudly matters here: a silent failure would leave the app
-        // looking functional while writing to nothing.
-        setError(e instanceof Error ? e.message : String(e));
-      });
-  }, []);
-
   return (
-    <main>
-      <h1>Workout Tracker</h1>
-      {error && (
-        <p role="alert">
-          Could not open the database: {error}. Training data cannot be saved.
-        </p>
-      )}
-      {!error && !ready && <p>Preparing your exercise library…</p>}
-      {ready && <LibraryScreen />}
-    </main>
+    // basename comes from Vite's configured base so it stays in sync with
+    // the GitHub Pages subpath rather than being hardcoded in two places.
+    <BrowserRouter basename={import.meta.env.BASE_URL}>
+      <Routes>
+        <Route element={<AppLayout />}>
+          <Route path="/" element={<p>Today lands in a later task.</p>} />
+          <Route path="/routines" element={<p>Routines land in a later task.</p>} />
+          <Route path="/library" element={<LibraryScreen />} />
+        </Route>
+      </Routes>
+    </BrowserRouter>
   );
 }
