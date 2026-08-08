@@ -37,3 +37,9 @@ it('marks the current section as current', async () => {
   const current = await screen.findByRole('link', { name: 'Routines' });
   expect(current).toHaveAttribute('aria-current', 'page');
 });
+
+it('does not mark Today as current when on another route', async () => {
+  renderAt('/routines');
+  const today = await screen.findByRole('link', { name: 'Today' });
+  expect(today).not.toHaveAttribute('aria-current');
+});
