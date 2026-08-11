@@ -111,7 +111,10 @@ describe('withoutRoutine', () => {
   });
 
   it('accounts for every earlier occurrence when a routine repeats', () => {
-    // Old formula gave wrap(3,3)=0 -> 'legs'. Correct is 'arms'.
+    // Covers the removed-before-pointer adjustment with a repeated routine.
+    // Does NOT discriminate the later pointer-normalisation fix: currentIndex
+    // is already in range here, so wrap() is the identity and both versions
+    // agree. Kept as coverage of the adjustment itself.
     const result = withoutRoutine(cycle(['push', 'push', 'legs', 'arms', 'core'], 3), 'push');
     expect(result.routineIds).toEqual(['legs', 'arms', 'core']);
     expect(nextRoutineId(result)).toBe('arms');
@@ -119,7 +122,9 @@ describe('withoutRoutine', () => {
 
   it('keeps the pointer sensible when the pointed-at routine is removed', () => {
     // Pointer sits on the SECOND 'push'; one earlier occurrence is also
-    // removed. Old formula gave wrap(2,2)=0 -> 'pull'. Correct is 'legs'.
+    // removed. Like the test above, this exercises the adjustment but not
+    // the pointer normalisation — currentIndex is in range, so wrap() is
+    // the identity. The two out-of-range tests below cover normalisation.
     const result = withoutRoutine(cycle(['push', 'pull', 'push', 'legs'], 2), 'push');
     expect(result.routineIds).toEqual(['pull', 'legs']);
     expect(nextRoutineId(result)).toBe('legs');
