@@ -34,6 +34,18 @@ export async function saveCycle(cycle: Cycle): Promise<void> {
 }
 
 /**
+ * Reads the active cycle without creating one. Unlike
+ * getOrCreateActiveCycle, this never opens a readwrite transaction, so it is
+ * the one safe to call from inside useLiveQuery — Dexie throws
+ * ReadOnlyError if a liveQuery querier opens a transaction in any mode
+ * other than 'readonly'.
+ */
+export async function getActiveCycle(): Promise<Cycle | undefined> {
+  const all = await db.cycles.toArray();
+  return all.find((c) => c.isActive);
+}
+
+/**
  * Keeps cycles referentially clean when a routine is archived. Without this
  * an archived routine would keep coming up as "next" with no way to train it.
  */

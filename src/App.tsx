@@ -3,6 +3,7 @@ import { AppLayout } from './ui/AppLayout';
 import { LibraryScreen } from './ui/library/LibraryScreen';
 import { RoutinesScreen } from './ui/routines/RoutinesScreen';
 import { RoutineEditor } from './ui/routines/RoutineEditor';
+import { CycleEditor } from './ui/cycle/CycleEditor';
 
 export function App() {
   return (
@@ -14,6 +15,7 @@ export function App() {
           <Route path="/" element={<p>Today lands in a later task.</p>} />
           <Route path="/routines" element={<RoutinesScreen />} />
           <Route path="/routines/:routineId" element={<RoutineEditor />} />
+          <Route path="/cycle" element={<CycleEditor />} />
           <Route path="/library" element={<LibraryScreen />} />
         </Route>
       </Routes>
