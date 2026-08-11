@@ -28,11 +28,16 @@ export function skipNext(cycle: Cycle): Cycle {
 }
 
 export function withoutRoutine(cycle: Cycle, routineId: string): Cycle {
+  // Normalise first: currentIndex may be out of range, and slice() would
+  // otherwise clamp an oversized index to the whole array or reinterpret a
+  // negative one as counting from the end. Both silently mis-count.
+  const pointer = wrap(cycle.currentIndex, cycle.routineIds.length);
+
   // Removing an occurrence before the pointer shifts every later element
   // down by one. Without this adjustment the pointer keeps its numeric
   // index and silently lands on a different routine.
   const removedBefore = cycle.routineIds
-    .slice(0, cycle.currentIndex)
+    .slice(0, pointer)
     .filter((id) => id === routineId).length;
 
   const routineIds = cycle.routineIds.filter((id) => id !== routineId);
@@ -41,6 +46,6 @@ export function withoutRoutine(cycle: Cycle, routineId: string): Cycle {
   return {
     ...cycle,
     routineIds,
-    currentIndex: wrap(cycle.currentIndex - removedBefore, routineIds.length),
+    currentIndex: wrap(pointer - removedBefore, routineIds.length),
   };
 }

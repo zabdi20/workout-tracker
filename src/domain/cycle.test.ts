@@ -111,14 +111,29 @@ describe('withoutRoutine', () => {
   });
 
   it('accounts for every earlier occurrence when a routine repeats', () => {
-    const result = withoutRoutine(cycle(['push', 'push', 'legs'], 2), 'push');
-    expect(result.routineIds).toEqual(['legs']);
-    expect(nextRoutineId(result)).toBe('legs');
+    // Old formula gave wrap(3,3)=0 -> 'legs'. Correct is 'arms'.
+    const result = withoutRoutine(cycle(['push', 'push', 'legs', 'arms', 'core'], 3), 'push');
+    expect(result.routineIds).toEqual(['legs', 'arms', 'core']);
+    expect(nextRoutineId(result)).toBe('arms');
   });
 
   it('keeps the pointer sensible when the pointed-at routine is removed', () => {
-    const result = withoutRoutine(cycle(['push', 'pull', 'legs'], 1), 'pull');
-    expect(result.routineIds).toEqual(['push', 'legs']);
+    // Pointer sits on the SECOND 'push'; one earlier occurrence is also
+    // removed. Old formula gave wrap(2,2)=0 -> 'pull'. Correct is 'legs'.
+    const result = withoutRoutine(cycle(['push', 'pull', 'push', 'legs'], 2), 'push');
+    expect(result.routineIds).toEqual(['pull', 'legs']);
+    expect(nextRoutineId(result)).toBe('legs');
+  });
+
+  it('normalises an oversized currentIndex before counting', () => {
+    // Logical pointer is wrap(10,3)=1 -> 'pull'; it must stay on 'pull'.
+    const result = withoutRoutine(cycle(['push', 'pull', 'legs'], 10), 'push');
+    expect(nextRoutineId(result)).toBe('pull');
+  });
+
+  it('normalises a negative currentIndex before counting', () => {
+    // Logical pointer is wrap(-1,3)=2 -> 'legs'; it must stay on 'legs'.
+    const result = withoutRoutine(cycle(['push', 'pull', 'legs'], -1), 'push');
     expect(nextRoutineId(result)).toBe('legs');
   });
 });
