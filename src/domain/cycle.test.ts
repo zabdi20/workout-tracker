@@ -102,4 +102,23 @@ describe('withoutRoutine', () => {
     withoutRoutine(before, 'push');
     expect(before.routineIds).toEqual(['push', 'pull']);
   });
+
+  it('keeps the pointer on the same routine when an earlier one is removed', () => {
+    const result = withoutRoutine(cycle(['push', 'pull', 'legs'], 2), 'push');
+    expect(result.routineIds).toEqual(['pull', 'legs']);
+    expect(result.currentIndex).toBe(1);
+    expect(nextRoutineId(result)).toBe('legs');
+  });
+
+  it('accounts for every earlier occurrence when a routine repeats', () => {
+    const result = withoutRoutine(cycle(['push', 'push', 'legs'], 2), 'push');
+    expect(result.routineIds).toEqual(['legs']);
+    expect(nextRoutineId(result)).toBe('legs');
+  });
+
+  it('keeps the pointer sensible when the pointed-at routine is removed', () => {
+    const result = withoutRoutine(cycle(['push', 'pull', 'legs'], 1), 'pull');
+    expect(result.routineIds).toEqual(['push', 'legs']);
+    expect(nextRoutineId(result)).toBe('legs');
+  });
 });

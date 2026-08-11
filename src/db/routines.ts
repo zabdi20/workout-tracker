@@ -56,8 +56,13 @@ export async function setRoutineItems(
  * where they want it.
  */
 export async function archiveRoutine(id: string): Promise<void> {
-  await db.routines.update(id, { isArchived: true, updatedAt: Date.now() });
-  await removeRoutineFromAllCycles(id);
+  // One transaction across both tables: archiving and de-listing must not
+  // be separable, or a failure between them leaves an archived routine
+  // still sitting in a rotation with no way to train it.
+  await db.transaction('rw', db.routines, db.cycles, async () => {
+    await db.routines.update(id, { isArchived: true, updatedAt: Date.now() });
+    await removeRoutineFromAllCycles(id);
+  });
 }
 
 export async function unarchiveRoutine(id: string): Promise<void> {

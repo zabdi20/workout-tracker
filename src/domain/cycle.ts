@@ -28,10 +28,19 @@ export function skipNext(cycle: Cycle): Cycle {
 }
 
 export function withoutRoutine(cycle: Cycle, routineId: string): Cycle {
+  // Removing an occurrence before the pointer shifts every later element
+  // down by one. Without this adjustment the pointer keeps its numeric
+  // index and silently lands on a different routine.
+  const removedBefore = cycle.routineIds
+    .slice(0, cycle.currentIndex)
+    .filter((id) => id === routineId).length;
+
   const routineIds = cycle.routineIds.filter((id) => id !== routineId);
+  if (routineIds.length === 0) return { ...cycle, routineIds, currentIndex: 0 };
+
   return {
     ...cycle,
     routineIds,
-    currentIndex: routineIds.length === 0 ? 0 : wrap(cycle.currentIndex, routineIds.length),
+    currentIndex: wrap(cycle.currentIndex - removedBefore, routineIds.length),
   };
 }
