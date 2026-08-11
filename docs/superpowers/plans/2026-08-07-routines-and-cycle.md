@@ -1852,7 +1852,15 @@ than on every live-query emission, so typing is not discarded."
 - Modify: `src/App.tsx`, `src/ui/AppLayout.tsx`
 
 **Interfaces:**
-- Consumes: `getOrCreateActiveCycle`, `saveCycle` from `src/db/cycles.ts`; `listRoutines` from `src/db/routines.ts`.
+- Consumes: `getActiveCycle`, `getOrCreateActiveCycle`, `saveCycle` from `src/db/cycles.ts`; `listRoutines` from `src/db/routines.ts`.
+
+**A Dexie constraint that shapes both this task and Task 9:** a `liveQuery`
+querier may not open a readwrite transaction — Dexie throws `ReadOnlyError`.
+`getOrCreateActiveCycle` always opens one, deliberately, to stay race-safe under
+StrictMode's double-invoked effects. So read through the read-only
+`getActiveCycle()` inside `useLiveQuery`, and create the cycle from a mount
+effect instead. Once the create lands, `db.cycles` change tracking re-runs the
+query.
 - Produces: `CycleEditor` component, mounted at `/cycle`, plus a fourth navigation tab.
 
 - [ ] **Step 1: Write the failing test**
@@ -2111,7 +2119,7 @@ so removal is by index rather than id."
 - Modify: `src/App.tsx`
 
 **Interfaces:**
-- Consumes: `getOrCreateActiveCycle`, `saveCycle` from `src/db/cycles.ts`; `getRoutine` from `src/db/routines.ts`; `listExercises` from `src/db/exercises.ts`; `nextRoutineId`, `skipNext` from `src/domain/cycle.ts`.
+- Consumes: `getActiveCycle`, `getOrCreateActiveCycle`, `saveCycle` from `src/db/cycles.ts`; `getRoutine` from `src/db/routines.ts`; `listExercises` from `src/db/exercises.ts`; `nextRoutineId`, `skipNext` from `src/domain/cycle.ts`.
 - Produces: `TodayScreen` component, mounted at `/`.
 
 **There is no Start button.** Sessions arrive in Plan 3; a button that starts nothing would be a stub. Skip is a permanent feature — you skip a day in real life — so it earns its place now.
@@ -2218,9 +2226,10 @@ Expected: FAIL — `Failed to resolve import "./TodayScreen"`.
 Create `src/ui/today/TodayScreen.tsx`:
 
 ```tsx
+import { useEffect } from 'react';
 import { Link } from 'react-router-dom';
 import { useLiveQuery } from 'dexie-react-hooks';
-import { getOrCreateActiveCycle, saveCycle } from '../../db/cycles';
+import { getActiveCycle, getOrCreateActiveCycle, saveCycle } from '../../db/cycles';
 import { getRoutine } from '../../db/routines';
 import { listExercises } from '../../db/exercises';
 import { nextRoutineId, skipNext } from '../../domain/cycle';
@@ -2231,15 +2240,28 @@ export function TodayScreen() {
   // One query rather than two chained ones. Splitting the cycle read from
   // the routine read makes the second query lag a render behind the first,
   // which flashes "no longer available" every time the rotation changes.
+  // getActiveCycle, not getOrCreateActiveCycle: Dexie forbids opening a
+  // readwrite transaction inside a liveQuery querier, and
+  // getOrCreateActiveCycle always opens one to stay race-safe under
+  // StrictMode's double-invoked effects. The bootstrap effect below creates
+  // the cycle outside that context; db.cycles change tracking then re-runs
+  // this query. Returns null until the cycle exists.
   const data = useLiveQuery(async () => {
-    const cycle = await getOrCreateActiveCycle();
+    const cycle = await getActiveCycle();
+    if (!cycle) return null;
     const upNextId = nextRoutineId(cycle);
     const routine = upNextId ? (await getRoutine(upNextId)) ?? null : null;
     return { cycle, routine };
   }, []);
   const exercises = useLiveQuery(() => listExercises({ includeArchived: true }), []);
 
-  if (data === undefined) return <p>Loading…</p>;
+  useEffect(() => {
+    void run(() => getOrCreateActiveCycle());
+  }, []);
+
+  if (data === undefined || data === null || exercises === undefined) {
+    return <p>Loading…</p>;
+  }
   const { cycle, routine } = data;
 
   if (cycle.routineIds.length === 0) {
