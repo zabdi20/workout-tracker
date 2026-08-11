@@ -1,4 +1,4 @@
-import { nextRoutineId, advanceAfter, skipNext, withoutRoutine } from './cycle';
+import { nextRoutineId, advanceAfter, skipNext, withoutRoutine, cyclePosition } from './cycle';
 import type { Cycle } from '../db/types';
 
 function cycle(routineIds: string[], currentIndex = 0): Cycle {
@@ -140,5 +140,26 @@ describe('withoutRoutine', () => {
     // Logical pointer is wrap(-1,3)=2 -> 'legs'; it must stay on 'legs'.
     const result = withoutRoutine(cycle(['push', 'pull', 'legs'], -1), 'push');
     expect(nextRoutineId(result)).toBe('legs');
+  });
+});
+
+describe('cyclePosition', () => {
+  it('is 1-based', () => {
+    expect(cyclePosition(cycle(['push', 'pull', 'legs'], 0))).toBe(1);
+    expect(cyclePosition(cycle(['push', 'pull', 'legs'], 2))).toBe(3);
+  });
+
+  it('returns 0 for an empty cycle', () => {
+    expect(cyclePosition(cycle([]))).toBe(0);
+  });
+
+  it('never returns zero or negative for a negative index', () => {
+    expect(cyclePosition(cycle(['push', 'pull', 'legs'], -1))).toBe(3);
+    expect(cyclePosition(cycle(['push', 'pull', 'legs'], -5))).toBe(2);
+  });
+
+  it('never exceeds the rotation length for an oversized index', () => {
+    expect(cyclePosition(cycle(['push', 'pull', 'legs'], 10))).toBe(2);
+    expect(cyclePosition(cycle(['push', 'pull'], 99))).toBe(2);
   });
 });

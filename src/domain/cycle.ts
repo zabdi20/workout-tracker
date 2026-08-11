@@ -27,6 +27,17 @@ export function skipNext(cycle: Cycle): Cycle {
   return { ...cycle, currentIndex: wrap(cycle.currentIndex + 1, cycle.routineIds.length) };
 }
 
+/**
+ * 1-based position of the current routine within the rotation, for display.
+ * Returns 0 for an empty cycle. Normalises through wrap() so an out-of-range
+ * currentIndex cannot render a zero or negative position — the same
+ * normalisation nextRoutineId already applies when picking the routine.
+ */
+export function cyclePosition(cycle: Cycle): number {
+  if (cycle.routineIds.length === 0) return 0;
+  return wrap(cycle.currentIndex, cycle.routineIds.length) + 1;
+}
+
 export function withoutRoutine(cycle: Cycle, routineId: string): Cycle {
   // Normalise first: currentIndex may be out of range, and slice() would
   // otherwise clamp an oversized index to the whole array or reinterpret a

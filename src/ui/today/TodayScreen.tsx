@@ -4,7 +4,7 @@ import { useLiveQuery } from 'dexie-react-hooks';
 import { getActiveCycle, getOrCreateActiveCycle, saveCycle } from '../../db/cycles';
 import { getRoutine } from '../../db/routines';
 import { listExercises } from '../../db/exercises';
-import { nextRoutineId, skipNext } from '../../domain/cycle';
+import { nextRoutineId, skipNext, cyclePosition } from '../../domain/cycle';
 import { useWriteError } from '../useWriteError';
 
 export function TodayScreen() {
@@ -48,7 +48,7 @@ export function TodayScreen() {
     );
   }
 
-  const position = (cycle.currentIndex % cycle.routineIds.length) + 1;
+  const position = cyclePosition(cycle);
   const nameById = new Map((exercises ?? []).map((e) => [e.id, e.name]));
 
   return (
