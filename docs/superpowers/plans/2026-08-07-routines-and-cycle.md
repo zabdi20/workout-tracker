@@ -1272,7 +1272,7 @@ export function RoutinesScreen() {
         {error && <p role="alert">{error}</p>}
         <label>
           New routine name
-          <input value={name} onChange={(e) => setName(e.target.value)} />
+          <input value={nameValue} onChange={(e) => setDraftName(e.target.value)} />
         </label>
         <button type="submit">Add routine</button>
       </form>
@@ -1695,7 +1695,7 @@ Expected: FAIL — `Failed to resolve import "./RoutineEditor"`.
 Create `src/ui/routines/RoutineEditor.tsx`:
 
 ```tsx
-import { useEffect, useState } from 'react';
+import { useState } from 'react';
 import { useParams } from 'react-router-dom';
 import { useLiveQuery } from 'dexie-react-hooks';
 import { getRoutine, renameRoutine, setRoutineItems } from '../../db/routines';
@@ -1706,8 +1706,7 @@ import { ExerciseBrowser } from '../library/ExerciseBrowser';
 
 export function RoutineEditor() {
   const { routineId } = useParams<{ routineId: string }>();
-  const [name, setName] = useState('');
-  const [nameLoaded, setNameLoaded] = useState(false);
+  const [draftName, setDraftName] = useState<string | null>(null);
   const [picking, setPicking] = useState(false);
   const { error, run } = useWriteError();
 
@@ -1721,16 +1720,9 @@ export function RoutineEditor() {
   );
   const exercises = useLiveQuery(() => listExercises({ includeArchived: true }), []);
 
-  // Seed the name field once, from the first load. Re-seeding on every
-  // live-query emission would discard what the user is typing.
-  useEffect(() => {
-    if (routine && !nameLoaded) {
-      setName(routine.name);
-      setNameLoaded(true);
-    }
-  }, [routine, nameLoaded]);
-
-  if (routine === undefined) return <p>Loading…</p>;
+  // Guard on both queries. Without the exercises guard, routine items render
+  // "Unknown exercise" for a frame before names resolve.
+  if (routine === undefined || exercises === undefined) return <p>Loading…</p>;
   if (routine === null) return <p role="alert">Routine not found.</p>;
 
   const nameById = new Map((exercises ?? []).map((e) => [e.id, e.name]));
@@ -1738,8 +1730,13 @@ export function RoutineEditor() {
   // Bound after the guards above, so no non-null assertion is needed.
   const { id: currentId, items } = routine;
 
+  // The field shows the stored name until the user edits, then their draft.
+  // Deriving it avoids a seeding effect, which could otherwise fire after the
+  // user started typing and silently discard their input.
+  const nameValue = draftName ?? routine.name;
+
   function saveName() {
-    return run(() => renameRoutine(currentId, name));
+    return run(() => renameRoutine(currentId, nameValue));
   }
 
   return (
