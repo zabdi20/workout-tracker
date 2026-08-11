@@ -1272,7 +1272,7 @@ export function RoutinesScreen() {
         {error && <p role="alert">{error}</p>}
         <label>
           New routine name
-          <input value={nameValue} onChange={(e) => setDraftName(e.target.value)} />
+          <input value={name} onChange={(e) => setName(e.target.value)} />
         </label>
         <button type="submit">Add routine</button>
       </form>
@@ -1747,7 +1747,7 @@ export function RoutineEditor() {
 
       <label>
         Routine name
-        <input value={name} onChange={(e) => setName(e.target.value)} />
+        <input value={nameValue} onChange={(e) => setDraftName(e.target.value)} />
       </label>
       <button type="button" onClick={saveName}>Save name</button>
 
