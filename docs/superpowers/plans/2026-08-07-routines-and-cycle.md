@@ -42,6 +42,10 @@ Do not rebuild any of this. It is on `main`, 93 tests passing.
 - **TDD is required.** Write the failing test, run it and watch it fail, implement, run it and watch it pass, commit.
 - **Testing balance:** pure logic in `src/domain/` gets thorough unit tests. Screens get smoke tests only — enough to prove wiring, not exhaustive component coverage.
 - **Shell:** Git Bash, not PowerShell. PowerShell's Restricted execution policy blocks the `npm.ps1`/`npx.ps1` shims. If `node` is missing from PATH: `export PATH="/c/Program Files/nodejs:$PATH"`.
+- **Every database write triggered from an event handler must surface its failure.**
+  A bare `onClick={() => save(...)}` is fire-and-forget: on rejection the user sees
+  nothing while the app looks like it worked, which the spec explicitly forbids.
+  Use the `useWriteError` hook introduced in Task 7.
 - **Commit after every task.** Do not batch commits across tasks.
 
 ---
@@ -1251,6 +1255,15 @@ export function RoutinesScreen() {
     }
   }
 
+  async function handleArchive(id: string) {
+    setError(null);
+    try {
+      await archiveRoutine(id);
+    } catch (e: unknown) {
+      setError(e instanceof Error ? e.message : String(e));
+    }
+  }
+
   return (
     <section>
       <h2>Routines</h2>
@@ -1281,7 +1294,7 @@ export function RoutinesScreen() {
               <button
                 type="button"
                 aria-label={`Archive ${routine.name}`}
-                onClick={() => archiveRoutine(routine.id)}
+                onClick={() => handleArchive(routine.id)}
               >
                 Archive
               </button>
@@ -1508,6 +1521,37 @@ unchanged and still pass, which is the check that this was behaviour-neutral."
 - Create: `src/ui/routines/RoutineEditor.tsx`, `src/ui/routines/RoutineEditor.test.tsx`
 - Modify: `src/App.tsx`
 
+**Files:**
+- Create: `src/ui/useWriteError.ts`
+
+Before the editor itself, add the shared hook every remaining screen uses to keep
+database writes from failing silently:
+
+```ts
+import { useState } from 'react';
+
+/**
+ * Runs a database write and surfaces any failure as a message the caller can
+ * render. An event handler that calls a write directly is fire-and-forget: on
+ * rejection the user sees nothing while the app looks like it worked, which the
+ * spec explicitly forbids. Three screens need this, so it lives in one place.
+ */
+export function useWriteError() {
+  const [error, setError] = useState<string | null>(null);
+
+  async function run(write: () => Promise<unknown>): Promise<void> {
+    setError(null);
+    try {
+      await write();
+    } catch (e: unknown) {
+      setError(e instanceof Error ? e.message : String(e));
+    }
+  }
+
+  return { error, run };
+}
+```
+
 **Interfaces:**
 - Consumes: `getRoutine`, `renameRoutine`, `setRoutineItems` from `src/db/routines.ts`; `getExercise` from `src/db/exercises.ts`; `addItem`, `removeItem`, `moveItem` from `src/domain/routineItems.ts`; `ExerciseBrowser` from `src/ui/library/ExerciseBrowser.tsx`; `useParams` from `react-router-dom`.
 - Produces: `RoutineEditor` component, mounted at `/routines/:routineId`.
@@ -1655,6 +1699,7 @@ import { useEffect, useState } from 'react';
 import { useParams } from 'react-router-dom';
 import { useLiveQuery } from 'dexie-react-hooks';
 import { getRoutine, renameRoutine, setRoutineItems } from '../../db/routines';
+import { useWriteError } from '../useWriteError';
 import { listExercises } from '../../db/exercises';
 import { addItem, moveItem, removeItem } from '../../domain/routineItems';
 import { ExerciseBrowser } from '../library/ExerciseBrowser';
@@ -1664,7 +1709,7 @@ export function RoutineEditor() {
   const [name, setName] = useState('');
   const [nameLoaded, setNameLoaded] = useState(false);
   const [picking, setPicking] = useState(false);
-  const [error, setError] = useState<string | null>(null);
+  const { error, run } = useWriteError();
 
   // Resolves to `undefined` while loading and `null` when the id matches no
   // routine, so "still loading" and "not found" are distinguishable. Without
@@ -1693,13 +1738,8 @@ export function RoutineEditor() {
   // Bound after the guards above, so no non-null assertion is needed.
   const { id: currentId, items } = routine;
 
-  async function saveName() {
-    setError(null);
-    try {
-      await renameRoutine(currentId, name);
-    } catch (e: unknown) {
-      setError(e instanceof Error ? e.message : String(e));
-    }
+  function saveName() {
+    return run(() => renameRoutine(currentId, name));
   }
 
   return (
@@ -1727,21 +1767,21 @@ export function RoutineEditor() {
                 <button
                   type="button"
                   aria-label={`Move ${label} up`}
-                  onClick={() => setRoutineItems(currentId, moveItem(items, item.id, 'up'))}
+                  onClick={() => run(() => setRoutineItems(currentId, moveItem(items, item.id, 'up')))}
                 >
                   Up
                 </button>
                 <button
                   type="button"
                   aria-label={`Move ${label} down`}
-                  onClick={() => setRoutineItems(currentId, moveItem(items, item.id, 'down'))}
+                  onClick={() => run(() => setRoutineItems(currentId, moveItem(items, item.id, 'down')))}
                 >
                   Down
                 </button>
                 <button
                   type="button"
                   aria-label={`Remove ${label}`}
-                  onClick={() => setRoutineItems(currentId, removeItem(items, item.id))}
+                  onClick={() => run(() => setRoutineItems(currentId, removeItem(items, item.id)))}
                 >
                   Remove
                 </button>
@@ -1758,7 +1798,7 @@ export function RoutineEditor() {
       {picking && (
         <ExerciseBrowser
           onSelect={(exercise) =>
-            setRoutineItems(currentId, addItem(items, exercise.id, crypto.randomUUID()))
+            run(() => setRoutineItems(currentId, addItem(items, exercise.id, crypto.randomUUID())))
           }
         />
       )}
@@ -1917,6 +1957,7 @@ Create `src/ui/cycle/CycleEditor.tsx`:
 import { useLiveQuery } from 'dexie-react-hooks';
 import { getOrCreateActiveCycle, saveCycle } from '../../db/cycles';
 import { listRoutines } from '../../db/routines';
+import { useWriteError } from '../useWriteError';
 
 /** Moves the entry at `index` one place in `direction`, returning a new array. */
 function moveAt(ids: string[], index: number, direction: 'up' | 'down'): string[] {
@@ -1928,6 +1969,7 @@ function moveAt(ids: string[], index: number, direction: 'up' | 'down'): string[
 }
 
 export function CycleEditor() {
+  const { error, run } = useWriteError();
   const cycle = useLiveQuery(() => getOrCreateActiveCycle(), []);
   const routines = useLiveQuery(() => listRoutines(), []);
 
@@ -1938,6 +1980,8 @@ export function CycleEditor() {
   return (
     <section>
       <h2>Rotation</h2>
+
+      {error && <p role="alert">{error}</p>}
 
       {routines.length === 0 ? (
         <p className="empty">Create a routine first, then order them here.</p>
@@ -1957,7 +2001,7 @@ export function CycleEditor() {
                       type="button"
                       aria-label={`Move ${label} up`}
                       onClick={() =>
-                        saveCycle({ ...cycle, routineIds: moveAt(cycle.routineIds, index, 'up') })
+                        run(() => saveCycle({ ...cycle, routineIds: moveAt(cycle.routineIds, index, 'up') }))
                       }
                     >
                       Up
@@ -1966,7 +2010,7 @@ export function CycleEditor() {
                       type="button"
                       aria-label={`Move ${label} down`}
                       onClick={() =>
-                        saveCycle({ ...cycle, routineIds: moveAt(cycle.routineIds, index, 'down') })
+                        run(() => saveCycle({ ...cycle, routineIds: moveAt(cycle.routineIds, index, 'down') }))
                       }
                     >
                       Down
@@ -1975,10 +2019,10 @@ export function CycleEditor() {
                       type="button"
                       aria-label={`Remove ${label} from rotation`}
                       onClick={() =>
-                        saveCycle({
+                        run(() => saveCycle({
                           ...cycle,
                           routineIds: cycle.routineIds.filter((_, i) => i !== index),
-                        })
+                        }))
                       }
                     >
                       Remove
@@ -1997,7 +2041,7 @@ export function CycleEditor() {
                   type="button"
                   aria-label={`Add ${routine.name} to rotation`}
                   onClick={() =>
-                    saveCycle({ ...cycle, routineIds: [...cycle.routineIds, routine.id] })
+                    run(() => saveCycle({ ...cycle, routineIds: [...cycle.routineIds, routine.id] }))
                   }
                 >
                   {routine.name}
@@ -2183,8 +2227,10 @@ import { getOrCreateActiveCycle, saveCycle } from '../../db/cycles';
 import { getRoutine } from '../../db/routines';
 import { listExercises } from '../../db/exercises';
 import { nextRoutineId, skipNext } from '../../domain/cycle';
+import { useWriteError } from '../useWriteError';
 
 export function TodayScreen() {
+  const { error, run } = useWriteError();
   // One query rather than two chained ones. Splitting the cycle read from
   // the routine read makes the second query lag a render behind the first,
   // which flashes "no longer available" every time the rotation changes.
@@ -2242,7 +2288,9 @@ export function TodayScreen() {
         </>
       )}
 
-      <button type="button" onClick={() => saveCycle(skipNext(cycle))}>
+      {error && <p role="alert">{error}</p>}
+
+      <button type="button" onClick={() => run(() => saveCycle(skipNext(cycle)))}>
         Skip to next
       </button>
     </section>
