@@ -793,6 +793,25 @@ describe('withoutRoutine', () => {
     expect(result.currentIndex).toBe(0);
   });
 
+  it('keeps the pointer on the same routine when an earlier one is removed', () => {
+    const result = withoutRoutine(cycle(['push', 'pull', 'legs'], 2), 'push');
+    expect(result.routineIds).toEqual(['pull', 'legs']);
+    expect(result.currentIndex).toBe(1);
+    expect(nextRoutineId(result)).toBe('legs');
+  });
+
+  it('accounts for every earlier occurrence when a routine repeats', () => {
+    const result = withoutRoutine(cycle(['push', 'push', 'legs'], 2), 'push');
+    expect(result.routineIds).toEqual(['legs']);
+    expect(nextRoutineId(result)).toBe('legs');
+  });
+
+  it('keeps the pointer sensible when the pointed-at routine is removed', () => {
+    const result = withoutRoutine(cycle(['push', 'pull', 'legs'], 1), 'pull');
+    expect(result.routineIds).toEqual(['push', 'legs']);
+    expect(nextRoutineId(result)).toBe('legs');
+  });
+
   it('does not mutate the input', () => {
     const before = cycle(['push', 'pull'], 0);
     withoutRoutine(before, 'push');
@@ -841,11 +860,21 @@ export function skipNext(cycle: Cycle): Cycle {
 }
 
 export function withoutRoutine(cycle: Cycle, routineId: string): Cycle {
+  // Removing an occurrence before the pointer shifts every later element
+  // down by one. Without this adjustment the pointer keeps its numeric
+  // index and silently lands on a different routine — so archiving an
+  // unrelated routine would change what the user trains next.
+  const removedBefore = cycle.routineIds
+    .slice(0, cycle.currentIndex)
+    .filter((id) => id === routineId).length;
+
   const routineIds = cycle.routineIds.filter((id) => id !== routineId);
+  if (routineIds.length === 0) return { ...cycle, routineIds, currentIndex: 0 };
+
   return {
     ...cycle,
     routineIds,
-    currentIndex: routineIds.length === 0 ? 0 : wrap(cycle.currentIndex, routineIds.length),
+    currentIndex: wrap(cycle.currentIndex - removedBefore, routineIds.length),
   };
 }
 ```
@@ -1051,8 +1080,15 @@ and replace `archiveRoutine`:
  * where they want it.
  */
 export async function archiveRoutine(id: string): Promise<void> {
-  await db.routines.update(id, { isArchived: true, updatedAt: Date.now() });
-  await removeRoutineFromAllCycles(id);
+  // One transaction across both tables: archiving and de-listing must not be
+  // separable, or a failure between them leaves an archived routine still
+  // sitting in a rotation with no way to train it. Dexie transactions are
+  // reentrant, so the one removeRoutineFromAllCycles opens joins this scope
+  // rather than starting a second.
+  await db.transaction('rw', db.routines, db.cycles, async () => {
+    await db.routines.update(id, { isArchived: true, updatedAt: Date.now() });
+    await removeRoutineFromAllCycles(id);
+  });
 }
 ```
 
