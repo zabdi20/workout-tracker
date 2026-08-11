@@ -19,6 +19,15 @@ export function RoutinesScreen() {
     }
   }
 
+  async function handleArchive(id: string) {
+    setError(null);
+    try {
+      await archiveRoutine(id);
+    } catch (e: unknown) {
+      setError(e instanceof Error ? e.message : String(e));
+    }
+  }
+
   return (
     <section>
       <h2>Routines</h2>
@@ -49,7 +58,7 @@ export function RoutinesScreen() {
               <button
                 type="button"
                 aria-label={`Archive ${routine.name}`}
-                onClick={() => archiveRoutine(routine.id)}
+                onClick={() => handleArchive(routine.id)}
               >
                 Archive
               </button>

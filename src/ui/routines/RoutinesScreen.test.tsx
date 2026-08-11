@@ -75,3 +75,19 @@ it('shows how many exercises each routine holds', async () => {
   renderScreen();
   expect(await screen.findByText(/2 exercises/i)).toBeInTheDocument();
 });
+
+it('surfaces an archive failure instead of failing silently', async () => {
+  const user = userEvent.setup();
+  await createRoutine('Push Day');
+  renderScreen();
+  await screen.findByRole('link', { name: /push day/i });
+
+  const routines = await import('../../db/routines');
+  const spy = vi.spyOn(routines, 'archiveRoutine')
+    .mockRejectedValueOnce(new Error('quota exceeded'));
+
+  await user.click(screen.getByRole('button', { name: /archive push day/i }));
+
+  expect(await screen.findByRole('alert')).toHaveTextContent(/quota exceeded/i);
+  spy.mockRestore();
+});
