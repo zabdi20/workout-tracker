@@ -2,6 +2,7 @@ import { BrowserRouter, Route, Routes } from 'react-router-dom';
 import { AppLayout } from './ui/AppLayout';
 import { LibraryScreen } from './ui/library/LibraryScreen';
 import { RoutinesScreen } from './ui/routines/RoutinesScreen';
+import { RoutineEditor } from './ui/routines/RoutineEditor';
 
 export function App() {
   return (
@@ -12,6 +13,7 @@ export function App() {
         <Route element={<AppLayout />}>
           <Route path="/" element={<p>Today lands in a later task.</p>} />
           <Route path="/routines" element={<RoutinesScreen />} />
+          <Route path="/routines/:routineId" element={<RoutineEditor />} />
           <Route path="/library" element={<LibraryScreen />} />
         </Route>
       </Routes>
