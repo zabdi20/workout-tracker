@@ -4,6 +4,7 @@ import { LibraryScreen } from './ui/library/LibraryScreen';
 import { RoutinesScreen } from './ui/routines/RoutinesScreen';
 import { RoutineEditor } from './ui/routines/RoutineEditor';
 import { CycleEditor } from './ui/cycle/CycleEditor';
+import { TodayScreen } from './ui/today/TodayScreen';
 
 export function App() {
   return (
@@ -12,7 +13,7 @@ export function App() {
     <BrowserRouter basename={import.meta.env.BASE_URL}>
       <Routes>
         <Route element={<AppLayout />}>
-          <Route path="/" element={<p>Today lands in a later task.</p>} />
+          <Route path="/" element={<TodayScreen />} />
           <Route path="/routines" element={<RoutinesScreen />} />
           <Route path="/routines/:routineId" element={<RoutineEditor />} />
           <Route path="/cycle" element={<CycleEditor />} />
