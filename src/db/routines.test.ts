@@ -3,6 +3,7 @@ import {
   listRoutines, getRoutine, createRoutine, renameRoutine,
   setRoutineItems, archiveRoutine, unarchiveRoutine,
 } from './routines';
+import { getOrCreateActiveCycle, saveCycle } from './cycles';
 import type { RoutineItem } from './types';
 
 beforeEach(async () => {
@@ -98,5 +99,30 @@ describe('archiving', () => {
     await archiveRoutine(r.id);
     await unarchiveRoutine(r.id);
     expect((await getRoutine(r.id))?.isArchived).toBe(false);
+  });
+});
+
+describe('archiveRoutine and cycles', () => {
+  it('removes the routine from every cycle', async () => {
+    const r = await createRoutine('Push Day');
+    const c = await getOrCreateActiveCycle();
+    await saveCycle({ ...c, routineIds: [r.id], currentIndex: 0 });
+
+    await archiveRoutine(r.id);
+
+    expect((await getOrCreateActiveCycle()).routineIds).toEqual([]);
+  });
+
+  it('does not re-add the routine when unarchived', async () => {
+    const r = await createRoutine('Push Day');
+    const c = await getOrCreateActiveCycle();
+    await saveCycle({ ...c, routineIds: [r.id], currentIndex: 0 });
+
+    await archiveRoutine(r.id);
+    await unarchiveRoutine(r.id);
+
+    // Restoring a routine does not silently rebuild the user's rotation;
+    // they put it back where they want it.
+    expect((await getOrCreateActiveCycle()).routineIds).toEqual([]);
   });
 });

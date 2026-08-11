@@ -1,4 +1,5 @@
 import { db } from './db';
+import { removeRoutineFromAllCycles } from './cycles';
 import type { Routine, RoutineItem } from './types';
 
 export async function listRoutines(
@@ -48,9 +49,15 @@ export async function setRoutineItems(
 /**
  * Archives rather than deletes. A hard delete would orphan every Session
  * whose routineId points here.
+ *
+ * Also drops the routine from every cycle: an archived routine left in a
+ * rotation would keep coming up as "next" with no way to train it.
+ * Unarchiving deliberately does NOT restore it — the user puts it back
+ * where they want it.
  */
 export async function archiveRoutine(id: string): Promise<void> {
   await db.routines.update(id, { isArchived: true, updatedAt: Date.now() });
+  await removeRoutineFromAllCycles(id);
 }
 
 export async function unarchiveRoutine(id: string): Promise<void> {
