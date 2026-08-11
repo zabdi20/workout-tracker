@@ -712,7 +712,9 @@ describe('nextRoutineId', () => {
   });
 
   it('wraps an out-of-range index rather than returning undefined', () => {
-    expect(nextRoutineId(cycle(['push', 'pull'], 5))).toBe('push');
+    // wrap(5, 2) === 1, so this is 'pull'. Not 'push' — an oversized index
+    // wraps by modulo, it does not reset to the start.
+    expect(nextRoutineId(cycle(['push', 'pull'], 5))).toBe('pull');
   });
 
   it('wraps a negative index', () => {
