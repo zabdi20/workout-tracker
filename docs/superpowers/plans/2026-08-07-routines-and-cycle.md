@@ -990,14 +990,13 @@ Expected: PASS — 6 tests passed.
 
 - [ ] **Step 9: Make archiving a routine remove it from cycles**
 
-Append to `src/db/routines.test.ts`:
-
-```ts
-Also add this import at the top of `src/db/routines.test.ts`, beside the existing ones:
+Add this import at the top of `src/db/routines.test.ts`, beside the existing ones:
 
 ```ts
 import { getOrCreateActiveCycle, saveCycle } from './cycles';
 ```
+
+Then append these tests to the same file:
 
 ```ts
 describe('archiveRoutine and cycles', () => {
