@@ -1959,8 +1959,9 @@ Expected: FAIL — `Failed to resolve import "./CycleEditor"`.
 Create `src/ui/cycle/CycleEditor.tsx`:
 
 ```tsx
+import { useEffect } from 'react';
 import { useLiveQuery } from 'dexie-react-hooks';
-import { getOrCreateActiveCycle, saveCycle } from '../../db/cycles';
+import { getActiveCycle, getOrCreateActiveCycle, saveCycle } from '../../db/cycles';
 import { listRoutines } from '../../db/routines';
 import { useWriteError } from '../useWriteError';
 
@@ -1975,8 +1976,18 @@ function moveAt(ids: string[], index: number, direction: 'up' | 'down'): string[
 
 export function CycleEditor() {
   const { error, run } = useWriteError();
-  const cycle = useLiveQuery(() => getOrCreateActiveCycle(), []);
+  // getActiveCycle, not getOrCreateActiveCycle: Dexie forbids opening a
+  // readwrite transaction inside a liveQuery querier, and
+  // getOrCreateActiveCycle always opens one to stay race-safe under
+  // StrictMode's double-invoked effects. The bootstrap effect below creates
+  // the cycle outside that context; db.cycles change tracking then re-runs
+  // this query.
+  const cycle = useLiveQuery(() => getActiveCycle(), []);
   const routines = useLiveQuery(() => listRoutines(), []);
+
+  useEffect(() => {
+    void run(() => getOrCreateActiveCycle());
+  }, []);
 
   if (cycle === undefined || routines === undefined) return <p>Loading…</p>;
 
