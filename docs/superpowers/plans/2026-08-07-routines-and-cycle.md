@@ -686,6 +686,7 @@ keeping these functions deterministic under test."
   - `nextRoutineId(cycle: Cycle): string | null`
   - `advanceAfter(cycle: Cycle, routineId: string): Cycle`
   - `skipNext(cycle: Cycle): Cycle`
+  - `cyclePosition(cycle: Cycle): number` — 1-based, for display
   - `withoutRoutine(cycle: Cycle, routineId: string): Cycle`
 - Produces from `src/db/cycles.ts`:
   - `getOrCreateActiveCycle(): Promise<Cycle>`
@@ -856,6 +857,17 @@ export function advanceAfter(cycle: Cycle, routineId: string): Cycle {
   const position = cycle.routineIds.indexOf(routineId);
   if (position === -1) return cycle;
   return { ...cycle, currentIndex: wrap(position + 1, cycle.routineIds.length) };
+}
+
+/**
+ * 1-based position of the current routine within the rotation, for display.
+ * Returns 0 for an empty cycle. Normalises through wrap() so an out-of-range
+ * currentIndex cannot render a zero or negative position — the same
+ * normalisation nextRoutineId already applies when picking the routine.
+ */
+export function cyclePosition(cycle: Cycle): number {
+  if (cycle.routineIds.length === 0) return 0;
+  return wrap(cycle.currentIndex, cycle.routineIds.length) + 1;
 }
 
 export function skipNext(cycle: Cycle): Cycle {
@@ -2130,7 +2142,7 @@ so removal is by index rather than id."
 - Modify: `src/App.tsx`
 
 **Interfaces:**
-- Consumes: `getActiveCycle`, `getOrCreateActiveCycle`, `saveCycle` from `src/db/cycles.ts`; `getRoutine` from `src/db/routines.ts`; `listExercises` from `src/db/exercises.ts`; `nextRoutineId`, `skipNext` from `src/domain/cycle.ts`.
+- Consumes: `getActiveCycle`, `getOrCreateActiveCycle`, `saveCycle` from `src/db/cycles.ts`; `getRoutine` from `src/db/routines.ts`; `listExercises` from `src/db/exercises.ts`; `nextRoutineId`, `skipNext`, `cyclePosition` from `src/domain/cycle.ts`.
 - Produces: `TodayScreen` component, mounted at `/`.
 
 **There is no Start button.** Sessions arrive in Plan 3; a button that starts nothing would be a stub. Skip is a permanent feature — you skip a day in real life — so it earns its place now.
@@ -2243,7 +2255,7 @@ import { useLiveQuery } from 'dexie-react-hooks';
 import { getActiveCycle, getOrCreateActiveCycle, saveCycle } from '../../db/cycles';
 import { getRoutine } from '../../db/routines';
 import { listExercises } from '../../db/exercises';
-import { nextRoutineId, skipNext } from '../../domain/cycle';
+import { cyclePosition, nextRoutineId, skipNext } from '../../domain/cycle';
 import { useWriteError } from '../useWriteError';
 
 export function TodayScreen() {
@@ -2287,7 +2299,10 @@ export function TodayScreen() {
     );
   }
 
-  const position = (cycle.currentIndex % cycle.routineIds.length) + 1;
+  // cyclePosition, not a raw modulo: JavaScript's % keeps the dividend's
+  // sign, so a negative currentIndex would render "0 of 3" beside a routine
+  // name that nextRoutineId had already wrapped correctly.
+  const position = cyclePosition(cycle);
   const nameById = new Map((exercises ?? []).map((e) => [e.id, e.name]));
 
   return (
