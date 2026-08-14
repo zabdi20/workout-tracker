@@ -1,5 +1,7 @@
 /// <reference types="vitest/config" />
-import { defineConfig } from 'vite';
+import { copyFileSync } from 'node:fs';
+import { resolve } from 'node:path';
+import { defineConfig, type Plugin } from 'vite';
 import react from '@vitejs/plugin-react';
 import { VitePWA } from 'vite-plugin-pwa';
 
@@ -8,6 +10,27 @@ import { VitePWA } from 'vite-plugin-pwa';
 // scope must all agree on it. A mismatch produces the worst failure mode:
 // the app installs successfully and then fails to load offline.
 const BASE = '/workout-tracker/';
+
+/**
+ * GitHub Pages has no SPA rewrite, and workbox.navigateFallback only helps
+ * once the service worker already controls the page. A cold load of a deep
+ * route (a bookmark, a shared link, a hard reload before the SW activates)
+ * hits GitHub's own 404 page instead of index.html.
+ *
+ * GitHub Pages' documented workaround is serving a 404.html, so copy the
+ * built index.html there verbatim after the build. This can't be a static
+ * public/404.html: Vite copies public/ unprocessed, so it would reference
+ * none of the build's hashed asset filenames.
+ */
+function spa404Fallback(): Plugin {
+  return {
+    name: 'spa-404-fallback',
+    closeBundle() {
+      const dist = resolve(import.meta.dirname, 'dist');
+      copyFileSync(resolve(dist, 'index.html'), resolve(dist, '404.html'));
+    },
+  };
+}
 
 export default defineConfig({
   base: BASE,
@@ -18,6 +41,7 @@ export default defineConfig({
   },
   plugins: [
     react(),
+    spa404Fallback(),
     VitePWA({
       registerType: 'autoUpdate',
       includeAssets: ['icon-192.png', 'icon-512.png', 'icon-512-maskable.png'],
