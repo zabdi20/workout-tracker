@@ -1,12 +1,21 @@
 import { useState, type FormEvent } from 'react';
 import { Link } from 'react-router-dom';
 import { useLiveQuery } from 'dexie-react-hooks';
-import { archiveRoutine, createRoutine, listRoutines } from '../../db/routines';
+import { archiveRoutine, createRoutine, listRoutines, unarchiveRoutine } from '../../db/routines';
+import { useWriteError } from '../useWriteError';
 
 export function RoutinesScreen() {
   const [name, setName] = useState('');
   const [error, setError] = useState<string | null>(null);
   const routines = useLiveQuery(() => listRoutines(), []);
+  // Separate live query, not a filter over `routines` above: that query
+  // deliberately excludes archived rows, so restoring a routine needs its
+  // own read of the full set.
+  const archivedRoutines = useLiveQuery(
+    () => listRoutines({ includeArchived: true }).then((all) => all.filter((r) => r.isArchived)),
+    [],
+  );
+  const { error: restoreError, run } = useWriteError();
 
   async function handleSubmit(event: FormEvent) {
     event.preventDefault();
@@ -65,6 +74,31 @@ export function RoutinesScreen() {
             </li>
           ))}
         </ul>
+      )}
+
+      {archivedRoutines && archivedRoutines.length > 0 && (
+        <section>
+          <h3>Archived</h3>
+          <p className="hint">
+            Restoring a routine does not put it back in your rotation — add it
+            again from Rotation if you want it there.
+          </p>
+          {restoreError && <p role="alert">{restoreError}</p>}
+          <ul className="archived-routine-list">
+            {archivedRoutines.map((routine) => (
+              <li key={routine.id}>
+                <span className="routine-name">{routine.name}</span>
+                <button
+                  type="button"
+                  aria-label={`Restore ${routine.name}`}
+                  onClick={() => run(() => unarchiveRoutine(routine.id))}
+                >
+                  Restore
+                </button>
+              </li>
+            ))}
+          </ul>
+        </section>
       )}
     </section>
   );

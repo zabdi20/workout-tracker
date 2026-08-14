@@ -2,7 +2,7 @@ import { render, screen } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
 import { MemoryRouter } from 'react-router-dom';
 import { resetDbForTests } from '../../db/db';
-import { createRoutine, listRoutines, setRoutineItems } from '../../db/routines';
+import { archiveRoutine, createRoutine, listRoutines, setRoutineItems } from '../../db/routines';
 import { RoutinesScreen } from './RoutinesScreen';
 
 beforeEach(async () => {
@@ -74,6 +74,42 @@ it('shows how many exercises each routine holds', async () => {
 
   renderScreen();
   expect(await screen.findByText(/2 exercises/i)).toBeInTheDocument();
+});
+
+it('moves an archived routine into the Archived section', async () => {
+  const user = userEvent.setup();
+  await createRoutine('Push Day');
+  renderScreen();
+  await screen.findByRole('link', { name: /push day/i });
+  expect(screen.queryByRole('heading', { name: /archived/i })).toBeNull();
+
+  await user.click(screen.getByRole('button', { name: /archive push day/i }));
+
+  expect(await screen.findByText(/no routines yet/i)).toBeInTheDocument();
+  expect(await screen.findByRole('heading', { name: /archived/i })).toBeInTheDocument();
+  expect(screen.getByRole('button', { name: /restore push day/i })).toBeInTheDocument();
+});
+
+it('restores an archived routine back to the main list', async () => {
+  const user = userEvent.setup();
+  const r = await createRoutine('Push Day');
+  await archiveRoutine(r.id);
+  renderScreen();
+  await screen.findByRole('button', { name: /restore push day/i });
+
+  await user.click(screen.getByRole('button', { name: /restore push day/i }));
+
+  expect(await screen.findByRole('link', { name: /push day/i })).toBeInTheDocument();
+  expect(screen.queryByRole('heading', { name: /archived/i })).toBeNull();
+  expect((await listRoutines()).map((r) => r.name)).toEqual(['Push Day']);
+});
+
+it('has no Archived section when nothing is archived', async () => {
+  await createRoutine('Push Day');
+  renderScreen();
+  await screen.findByRole('link', { name: /push day/i });
+
+  expect(screen.queryByRole('heading', { name: /archived/i })).toBeNull();
 });
 
 it('surfaces an archive failure instead of failing silently', async () => {
