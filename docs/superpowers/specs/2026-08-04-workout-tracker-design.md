@@ -60,6 +60,14 @@ Because Pages serves a project repo from a subpath, Vite's `base`, the manifest'
 `/workout-tracker/`. A mismatch produces the worst failure mode available: the app
 installs successfully and then fails to load offline.
 
+Pages also has no SPA rewrite, so any client-side route needs a **deep-link fallback**:
+the build copies `dist/index.html` to `dist/404.html`. Without it, a cold load of
+`/workout-tracker/routines` — a bookmark, a shared link, a reload before the service
+worker activates — gets GitHub's 404 page. `workbox`'s `navigateFallback` only helps
+once the service worker already controls the page, so it cannot cover the first visit.
+A static `public/404.html` does not work either: Vite copies `public/` verbatim, so it
+would reference no hashed asset names.
+
 ### Modules
 
 | Module  | Responsibility                                                                                          | Depends on      |
@@ -138,6 +146,20 @@ exactly one is active.
 Rationale for rotation over calendar: a weekday-bound schedule creates a permanent
 visible gap when a day is missed, and cannot answer "what should I do today?" on an
 unplanned gym visit.
+
+**The pointer is identity-based, not positional.** Editing the rotation must never
+silently change what you are about to train. Removing a slot before the pointer shifts
+the pointer down with it; reordering carries the pointer along with the slot it was on.
+Removing the pointed-at slot leaves the pointer in place, which then lands on whatever
+followed.
+
+This is why removal from the editor is by **index** rather than by routine id — a
+routine may occupy several slots, and the user removed one specific slot. Archiving a
+routine is the separate, id-based case: `withoutRoutine` strips every occurrence.
+
+The first cut of this got it wrong. The editor spread `currentIndex` through untouched,
+so removing an unrelated earlier entry moved the pointer to a different routine, and
+could persist an out-of-range index for a later `advanceAfter` to read.
 
 ### Session
 
