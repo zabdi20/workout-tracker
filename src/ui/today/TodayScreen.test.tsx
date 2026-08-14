@@ -75,6 +75,17 @@ it('skips to the next routine', async () => {
   await expect.poll(async () => (await getOrCreateActiveCycle()).currentIndex).toBe(1);
 });
 
+it('shows an alert instead of a permanent loading state when bootstrap fails', async () => {
+  const cycles = await import('../../db/cycles');
+  const spy = vi.spyOn(cycles, 'getOrCreateActiveCycle')
+    .mockRejectedValueOnce(new Error('disk on fire'));
+
+  renderScreen();
+
+  expect(await screen.findByRole('alert')).toHaveTextContent(/disk on fire/i);
+  spy.mockRestore();
+});
+
 it('says the routine is empty rather than showing nothing', async () => {
   const r = await createRoutine('Push Day');
   const c = await getOrCreateActiveCycle();

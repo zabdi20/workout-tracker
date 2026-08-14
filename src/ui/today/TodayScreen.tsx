@@ -32,6 +32,20 @@ export function TodayScreen() {
   }, []);
 
   if (data === undefined || data === null || exercises === undefined) {
+    // Checked before falling through to "Loading…": if the bootstrap
+    // effect's getOrCreateActiveCycle() rejects, no cycle is ever created,
+    // so data stays null forever. Without this the user would be stuck on
+    // "Loading…" with no diagnostic instead of seeing the failure. Once data
+    // has loaded, a later write failure (e.g. Skip to next) is instead shown
+    // inline below, alongside the still-visible routine.
+    if (error) {
+      return (
+        <section>
+          <h2>Today</h2>
+          <p role="alert">{error}</p>
+        </section>
+      );
+    }
     return <p>Loading…</p>;
   }
   const { cycle, routine } = data;

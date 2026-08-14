@@ -20,7 +20,23 @@ export function CycleEditor() {
     void run(() => getOrCreateActiveCycle());
   }, []);
 
-  if (cycle === undefined || routines === undefined) return <p>Loading…</p>;
+  if (cycle === undefined || routines === undefined) {
+    // Checked before falling through to "Loading…": if the bootstrap
+    // effect's getOrCreateActiveCycle() rejects, no cycle is ever created,
+    // so cycle stays undefined forever. Without this the user would be
+    // stuck on "Loading…" with no diagnostic instead of seeing the failure.
+    // Once data has loaded, a later write failure (e.g. Remove) is instead
+    // shown inline below, alongside the still-visible rotation.
+    if (error) {
+      return (
+        <section>
+          <h2>Rotation</h2>
+          <p role="alert">{error}</p>
+        </section>
+      );
+    }
+    return <p>Loading…</p>;
+  }
 
   const nameById = new Map(routines.map((r) => [r.id, r.name]));
 

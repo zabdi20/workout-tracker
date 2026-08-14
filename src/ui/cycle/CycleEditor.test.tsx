@@ -9,6 +9,17 @@ beforeEach(async () => {
   await resetDbForTests();
 });
 
+it('shows an alert instead of a permanent loading state when bootstrap fails', async () => {
+  const cycles = await import('../../db/cycles');
+  const spy = vi.spyOn(cycles, 'getOrCreateActiveCycle')
+    .mockRejectedValueOnce(new Error('disk on fire'));
+
+  render(<CycleEditor />);
+
+  expect(await screen.findByRole('alert')).toHaveTextContent(/disk on fire/i);
+  spy.mockRestore();
+});
+
 it('tells the user when no routines exist yet', async () => {
   render(<CycleEditor />);
   expect(await screen.findByText(/create a routine first/i)).toBeInTheDocument();
