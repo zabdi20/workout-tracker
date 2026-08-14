@@ -1,4 +1,7 @@
-import { nextRoutineId, advanceAfter, skipNext, withoutRoutine, cyclePosition } from './cycle';
+import {
+  nextRoutineId, advanceAfter, skipNext, withoutRoutine, cyclePosition,
+  withoutSlot, moveSlot,
+} from './cycle';
 import type { Cycle } from '../db/types';
 
 function cycle(routineIds: string[], currentIndex = 0): Cycle {
@@ -161,5 +164,110 @@ describe('cyclePosition', () => {
   it('never exceeds the rotation length for an oversized index', () => {
     expect(cyclePosition(cycle(['push', 'pull', 'legs'], 10))).toBe(2);
     expect(cyclePosition(cycle(['push', 'pull'], 99))).toBe(2);
+  });
+});
+
+describe('withoutSlot', () => {
+  it('removing a slot before the pointer shifts the pointer down with it', () => {
+    // pointer sits on 'legs' (index 2). Removing index 0 ('push') shifts
+    // everything down by one, so the pointer must move to keep pointing at
+    // 'legs'.
+    const result = withoutSlot(cycle(['push', 'pull', 'legs'], 2), 0);
+    expect(result.routineIds).toEqual(['pull', 'legs']);
+    expect(result.currentIndex).toBe(1);
+    expect(nextRoutineId(result)).toBe('legs');
+  });
+
+  it('removing the pointed-at slot leaves the pointer in place, landing on the next slot', () => {
+    // pointer sits on index 1 ('pull'). Removing index 1 itself: the pointer
+    // stays numerically at 1, which after deletion is 'legs'.
+    const result = withoutSlot(cycle(['push', 'pull', 'legs'], 1), 1);
+    expect(result.routineIds).toEqual(['push', 'legs']);
+    expect(result.currentIndex).toBe(1);
+    expect(nextRoutineId(result)).toBe('legs');
+  });
+
+  it('removing a slot after the pointer leaves the pointer untouched', () => {
+    const result = withoutSlot(cycle(['push', 'pull', 'legs'], 0), 2);
+    expect(result.routineIds).toEqual(['push', 'pull']);
+    expect(result.currentIndex).toBe(0);
+    expect(nextRoutineId(result)).toBe('push');
+  });
+
+  it('resets currentIndex to 0 when removing the last remaining slot', () => {
+    const result = withoutSlot(cycle(['push'], 0), 0);
+    expect(result.routineIds).toEqual([]);
+    expect(result.currentIndex).toBe(0);
+  });
+
+  it('removing one occurrence of a duplicated routine leaves the other slot untouched', () => {
+    // Two slots both point at 'push'. Removing slot 0 must not affect slot 1
+    // (now slot 0) or the routine as a whole -- only that one specific slot.
+    const result = withoutSlot(cycle(['push', 'pull', 'push'], 0), 0);
+    expect(result.routineIds).toEqual(['pull', 'push']);
+  });
+
+  it('wraps the pointer through an out-of-range currentIndex before adjusting', () => {
+    // Logical pointer is wrap(10, 3) = 1 -> 'pull'. Removing index 0 ('push')
+    // must still leave the pointer on 'pull'.
+    const result = withoutSlot(cycle(['push', 'pull', 'legs'], 10), 0);
+    expect(nextRoutineId(result)).toBe('pull');
+  });
+
+  it('does not mutate the input', () => {
+    const before = cycle(['push', 'pull', 'legs'], 1);
+    withoutSlot(before, 0);
+    expect(before.routineIds).toEqual(['push', 'pull', 'legs']);
+    expect(before.currentIndex).toBe(1);
+  });
+});
+
+describe('moveSlot', () => {
+  it('moving the pointed-at slot carries the pointer with it', () => {
+    // pointer sits on index 1 ('pull'). Moving it up swaps it with 'push';
+    // the pointer must follow 'pull' to its new position, index 0.
+    const result = moveSlot(cycle(['push', 'pull', 'legs'], 1), 1, 'up');
+    expect(result.routineIds).toEqual(['pull', 'push', 'legs']);
+    expect(result.currentIndex).toBe(0);
+    expect(nextRoutineId(result)).toBe('pull');
+  });
+
+  it('moving a slot the pointer is not on leaves the pointer\'s routine unchanged', () => {
+    // pointer sits on index 0 ('push'). Moving 'legs' (index 2) up swaps it
+    // with 'pull'; the pointer must still resolve to 'push'.
+    const result = moveSlot(cycle(['push', 'pull', 'legs'], 0), 2, 'up');
+    expect(result.routineIds).toEqual(['push', 'legs', 'pull']);
+    expect(result.currentIndex).toBe(0);
+    expect(nextRoutineId(result)).toBe('push');
+  });
+
+  it('moving the slot the pointer swaps with also relocates the pointer', () => {
+    // pointer sits on index 2 ('legs'), which is the target of moving index 1
+    // ('pull') down... wait, use an unambiguous case: pointer on the target.
+    // pointer sits on index 1 ('pull'); moving index 0 ('push') down swaps
+    // push and pull, so the pointer (on 'pull') must move to index 0.
+    const result = moveSlot(cycle(['push', 'pull', 'legs'], 1), 0, 'down');
+    expect(result.routineIds).toEqual(['pull', 'push', 'legs']);
+    expect(result.currentIndex).toBe(0);
+    expect(nextRoutineId(result)).toBe('pull');
+  });
+
+  it('is a no-op moving the first slot up', () => {
+    const before = cycle(['push', 'pull', 'legs'], 1);
+    const result = moveSlot(before, 0, 'up');
+    expect(result).toBe(before);
+  });
+
+  it('is a no-op moving the last slot down', () => {
+    const before = cycle(['push', 'pull', 'legs'], 1);
+    const result = moveSlot(before, 2, 'down');
+    expect(result).toBe(before);
+  });
+
+  it('does not mutate the input', () => {
+    const before = cycle(['push', 'pull', 'legs'], 0);
+    moveSlot(before, 0, 'down');
+    expect(before.routineIds).toEqual(['push', 'pull', 'legs']);
+    expect(before.currentIndex).toBe(0);
   });
 });

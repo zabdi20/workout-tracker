@@ -60,3 +60,38 @@ export function withoutRoutine(cycle: Cycle, routineId: string): Cycle {
     currentIndex: wrap(pointer - removedBefore, routineIds.length),
   };
 }
+
+/**
+ * Removes the rotation slot at `index`, keeping the pointer on the routine it
+ * was already on. Removing an earlier slot shifts later ones down, so the
+ * pointer moves with them; removing the pointed-at slot leaves the pointer in
+ * place, which then lands on whatever followed.
+ *
+ * Index-based, unlike withoutRoutine, because a routine may occupy several
+ * slots and the user removed one specific slot.
+ */
+export function withoutSlot(cycle: Cycle, index: number): Cycle {
+  const routineIds = cycle.routineIds.filter((_, i) => i !== index);
+  if (routineIds.length === 0) return { ...cycle, routineIds, currentIndex: 0 };
+
+  const pointer = wrap(cycle.currentIndex, cycle.routineIds.length);
+  const shifted = index < pointer ? pointer - 1 : pointer;
+  return { ...cycle, routineIds, currentIndex: wrap(shifted, routineIds.length) };
+}
+
+/**
+ * Swaps the slot at `index` with its neighbour, carrying the pointer with the
+ * slot it was on. Out-of-range moves are a no-op, returning the cycle
+ * unchanged so callers can skip a pointless write.
+ */
+export function moveSlot(cycle: Cycle, index: number, direction: 'up' | 'down'): Cycle {
+  const target = direction === 'up' ? index - 1 : index + 1;
+  if (target < 0 || target >= cycle.routineIds.length) return cycle;
+
+  const routineIds = [...cycle.routineIds];
+  [routineIds[index], routineIds[target]] = [routineIds[target], routineIds[index]];
+
+  const pointer = wrap(cycle.currentIndex, cycle.routineIds.length);
+  const currentIndex = pointer === index ? target : pointer === target ? index : pointer;
+  return { ...cycle, routineIds, currentIndex };
+}

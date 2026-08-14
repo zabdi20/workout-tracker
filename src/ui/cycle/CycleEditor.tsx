@@ -2,16 +2,8 @@ import { useEffect } from 'react';
 import { useLiveQuery } from 'dexie-react-hooks';
 import { getActiveCycle, getOrCreateActiveCycle, saveCycle } from '../../db/cycles';
 import { listRoutines } from '../../db/routines';
+import { withoutSlot, moveSlot } from '../../domain/cycle';
 import { useWriteError } from '../useWriteError';
-
-/** Moves the entry at `index` one place in `direction`, returning a new array. */
-function moveAt(ids: string[], index: number, direction: 'up' | 'down'): string[] {
-  const target = direction === 'up' ? index - 1 : index + 1;
-  if (target < 0 || target >= ids.length) return ids;
-  const next = [...ids];
-  [next[index], next[target]] = [next[target], next[index]];
-  return next;
-}
 
 export function CycleEditor() {
   const { error, run } = useWriteError();
@@ -55,30 +47,27 @@ export function CycleEditor() {
                     <button
                       type="button"
                       aria-label={`Move ${label} up`}
-                      onClick={() =>
-                        run(() => saveCycle({ ...cycle, routineIds: moveAt(cycle.routineIds, index, 'up') }))
-                      }
+                      onClick={() => {
+                        const next = moveSlot(cycle, index, 'up');
+                        if (next !== cycle) void run(() => saveCycle(next));
+                      }}
                     >
                       Up
                     </button>
                     <button
                       type="button"
                       aria-label={`Move ${label} down`}
-                      onClick={() =>
-                        run(() => saveCycle({ ...cycle, routineIds: moveAt(cycle.routineIds, index, 'down') }))
-                      }
+                      onClick={() => {
+                        const next = moveSlot(cycle, index, 'down');
+                        if (next !== cycle) void run(() => saveCycle(next));
+                      }}
                     >
                       Down
                     </button>
                     <button
                       type="button"
                       aria-label={`Remove ${label} from rotation`}
-                      onClick={() =>
-                        run(() => saveCycle({
-                          ...cycle,
-                          routineIds: cycle.routineIds.filter((_, i) => i !== index),
-                        }))
-                      }
+                      onClick={() => run(() => saveCycle(withoutSlot(cycle, index)))}
                     >
                       Remove
                     </button>

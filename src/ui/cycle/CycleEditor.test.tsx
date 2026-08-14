@@ -77,3 +77,22 @@ it('allows the same routine twice in one rotation', async () => {
   await expect.poll(async () => (await getOrCreateActiveCycle()).routineIds)
     .toEqual([a.id, a.id]);
 });
+
+it('removes only the tapped occurrence when a routine appears twice', async () => {
+  // Removal is index-based, not routine-based: with the same routine in two
+  // slots, only the Remove button that was actually clicked should remove
+  // its slot, leaving the other occurrence untouched.
+  const user = userEvent.setup();
+  const a = await createRoutine('Push Day');
+  const b = await createRoutine('Pull Day');
+  const c = await getOrCreateActiveCycle();
+  await saveCycle({ ...c, routineIds: [a.id, b.id, a.id] });
+
+  render(<CycleEditor />);
+  const removeButtons = await screen.findAllByRole('button', { name: /remove push day from rotation/i });
+  expect(removeButtons).toHaveLength(2);
+  await user.click(removeButtons[0]);
+
+  await expect.poll(async () => (await getOrCreateActiveCycle()).routineIds)
+    .toEqual([b.id, a.id]);
+});
