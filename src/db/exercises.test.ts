@@ -61,7 +61,25 @@ describe('createCustomExercise', () => {
 });
 
 describe('listExercises', () => {
-  it('excludes archived exercises by default and sorts by name', async () => {
+  it('sorts by name', async () => {
+    await createCustomExercise({
+      name: 'Zottman Curl', primaryMuscles: ['biceps'], secondaryMuscles: [],
+      equipment: 'dumbbell', measurementType: 'weight_reps',
+    });
+    await createCustomExercise({
+      name: 'Ab Wheel', primaryMuscles: ['abs'], secondaryMuscles: [],
+      equipment: 'other', measurementType: 'bodyweight_reps',
+    });
+    await createCustomExercise({
+      name: 'Machine Row', primaryMuscles: ['lats'], secondaryMuscles: [],
+      equipment: 'machine', measurementType: 'weight_reps',
+    });
+
+    const names = (await listExercises()).map((e) => e.name);
+    expect(names).toEqual(['Ab Wheel', 'Machine Row', 'Zottman Curl']);
+  });
+
+  it('excludes archived exercises by default', async () => {
     const a = await createCustomExercise({
       name: 'Zottman Curl', primaryMuscles: ['biceps'], secondaryMuscles: [],
       equipment: 'dumbbell', measurementType: 'weight_reps',

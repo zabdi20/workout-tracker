@@ -35,7 +35,16 @@ describe('createRoutine', () => {
 });
 
 describe('listRoutines', () => {
-  it('excludes archived routines by default and sorts by name', async () => {
+  it('sorts by name', async () => {
+    await createRoutine('Zercher Day');
+    await createRoutine('Arm Day');
+    await createRoutine('Mobility Day');
+
+    expect((await listRoutines()).map((r) => r.name))
+      .toEqual(['Arm Day', 'Mobility Day', 'Zercher Day']);
+  });
+
+  it('excludes archived routines by default', async () => {
     const z = await createRoutine('Zercher Day');
     await createRoutine('Arm Day');
     await archiveRoutine(z.id);

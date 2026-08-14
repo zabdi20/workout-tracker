@@ -1,8 +1,20 @@
 import { db, resetDbForTests } from './db';
-import { getOrCreateActiveCycle, saveCycle, removeRoutineFromAllCycles } from './cycles';
+import { getActiveCycle, getOrCreateActiveCycle, saveCycle, removeRoutineFromAllCycles } from './cycles';
 
 beforeEach(async () => {
   await resetDbForTests();
+});
+
+describe('getActiveCycle', () => {
+  it('returns undefined when no cycle exists', async () => {
+    expect(await getActiveCycle()).toBeUndefined();
+  });
+
+  it('returns the active cycle once one exists', async () => {
+    const created = await getOrCreateActiveCycle();
+    const found = await getActiveCycle();
+    expect(found).toEqual(created);
+  });
 });
 
 describe('getOrCreateActiveCycle', () => {
