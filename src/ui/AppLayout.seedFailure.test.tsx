@@ -1,14 +1,14 @@
 import { render, screen } from '@testing-library/react';
 import { MemoryRouter, Route, Routes } from 'react-router-dom';
-import { seedExercisesIfEmpty } from '../db/seed';
+import { prepareLibrary } from '../db/seed';
 import { AppLayout } from './AppLayout';
 
 // This file mocks '../db/seed' for the whole module, which is why the
 // seed-failure test lives here instead of in AppLayout.test.tsx: the other
-// file's tests rely on the real seedExercisesIfEmpty running against a real
+// file's tests rely on the real prepareLibrary running against a real
 // (reset) IndexedDB, and mocking the module would make that no longer true.
 vi.mock('../db/seed', () => ({
-  seedExercisesIfEmpty: vi.fn(),
+  prepareLibrary: vi.fn(),
 }));
 
 function renderAt(path: string) {
@@ -25,7 +25,7 @@ function renderAt(path: string) {
 }
 
 it('shows an alert and does not render the routed child when seeding fails', async () => {
-  vi.mocked(seedExercisesIfEmpty).mockRejectedValue(new Error('disk on fire'));
+  vi.mocked(prepareLibrary).mockRejectedValue(new Error('disk on fire'));
 
   renderAt('/routines');
 
@@ -35,7 +35,7 @@ it('shows an alert and does not render the routed child when seeding fails', asy
 });
 
 it('renders the routed child once seeding succeeds', async () => {
-  vi.mocked(seedExercisesIfEmpty).mockResolvedValue(0);
+  vi.mocked(prepareLibrary).mockResolvedValue(0);
 
   renderAt('/routines');
 

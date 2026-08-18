@@ -1,4 +1,62 @@
-# Handoff — Program Template Support (proposed Plan 2.5)
+# Handoff — Program Template Support (resolved 2026-08-17)
+
+> **Status: scoped and partly shipped. Read the Resolution first — the proposal below
+> it is preserved as background, and parts of it are now out of date.**
+
+## Resolution — 2026-08-17
+
+Brainstormed on 2026-08-17. **There is no Plan 2.5.** The three gaps were split:
+
+| Gap | Outcome |
+| --- | --- |
+| 1 — routines cannot hold a prescription | **Folded into Plan 3.** `targetSets` / rep range / `restSeconds` get their UI where they finally have a reader: displayed against "last time" during logging. Building the editor months before anything reads it was the thing to avoid. |
+| 2 — library excludes plyometrics | **Shipped.** Library widened 587 → 650. |
+| 3 — no import path | **Folded into Plan 3**, for the same reason. |
+
+The deciding argument for folding: nothing consumes a prescription until session
+logging exists. Importing the template today produces four routines that display
+names on Today and do nothing else.
+
+### What shipped
+
+- **Plyometrics included**, whole category, no hand-curation — consistent with the
+  spec's existing "keep the natural filter output" precedent.
+- **`medicine_ball` added to the `Equipment` union.** This also admitted two
+  *strength* entries previously discarded as `other` (`One-Arm Medicine Ball Slam`,
+  `Weighted Crunches`), so the total is 650, not 648.
+- **`other` equipment is now kept for plyometrics only.** That asymmetry is the
+  whole risk in the change and is pinned by its own test.
+- **`measurementType` comes from the category for plyometrics**, so the 31 entries
+  with no mapped equipment stop asking for a weight.
+- **Reconciliation shipped** — the logic the spec had deliberately deferred. Seeding
+  and upgrading are one operation: insert bundled rows whose id is absent. See
+  **Library revisions** in the design spec.
+
+### Corrections to the analysis below
+
+- The proposal says five template exercises are missing. **Four now resolve**
+  (`Lateral Bound`, `Standing Long Jump`, `Side to Side Box Shuffle`,
+  `Single-Leg Lateral Hop`). **Explosive Box Step-Up is absent from the source under
+  any filter** and stays a custom exercise; `Single Leg Push-off` is the nearest
+  bundled match.
+- The proposal treats the equipment problem as unresolved. It is decided: honest
+  mapping, with `other` allowed for plyometrics alone.
+- Widening turned out to be **purely additive — 63 added, 0 removed, 0 renamed**,
+  verified against the committed v1 file. That is what made reconciliation cheap.
+
+### Still open for Plan 3
+
+- Prescription UI on routine items, and template import.
+- **`measurementType` is not user-correctable.** About ten plyometrics entries are
+  timed drills rather than rep sets — including `Side to Side Box Shuffle`, the match
+  for the template's `Lateral Shuffle 4 × 20 sec`. Guessing them by name pattern was
+  rejected: `MEASUREMENT_OVERRIDES` has already produced two false-positive bugs, and
+  the source does not record which entries are timed. Correcting it per exercise is
+  the general fix.
+
+---
+
+## Original proposal (2026-08-11) — background
 
 > **Paste this whole file into a new session to continue.** It is written to be
 > self-contained: a cold session should need nothing but this and the repo.

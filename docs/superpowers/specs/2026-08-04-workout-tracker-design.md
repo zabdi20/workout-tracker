@@ -104,12 +104,40 @@ rebuilding the library with fresh ids would orphan every logged set on a device 
 has already seeded. User-created exercises use `crypto.randomUUID()`.
 
 `Settings.libraryVersion` records which bundled-library revision was seeded, so a
-future correction can be reconciled onto an installed device without a schema
-migration. The reconciliation logic itself is deliberately deferred until there is a
-correction to ship.
+corrected bundled library reaches an installed device without a schema migration.
+Revision 2 shipped that reconciliation — see **Library revisions** below.
 
 `equipment` is one of: `barbell`, `dumbbell`, `machine`, `cable`, `bodyweight`,
-`kettlebell`, `band`, `smith`, `ez_bar`, `other`.
+`kettlebell`, `band`, `smith`, `ez_bar`, `medicine_ball`, `other`.
+
+### Library revisions
+
+The bundled library is versioned, and bringing a device up to date is deliberately the
+*same operation* as seeding a new one: **insert every bundled exercise whose id is not
+already present**, in one transaction, then stamp `libraryVersion`. On an empty
+database that seeds everything; on a device seeded earlier it adds only what is new.
+There is no separate upgrade path to keep correct.
+
+This works only because a revision is additive, which the ids guarantee. Bundled ids
+are upstream slugs that never change, so a row that is present is a row reconciliation
+leaves completely alone. That is what preserves exercises the user archived or edited
+by hand — it falls out of the design rather than needing a rule. An unset
+`libraryVersion` means a device seeded before the field existed, which sorts as 0 and
+is therefore treated as out of date.
+
+**Correcting the contents of an existing entry is a different problem and is not
+solved here.** Any such update would silently overwrite a user's own edit, so it needs
+a decision about whose version wins before it can ship.
+
+Reconciliation failure blocks app startup, exactly as seed failure does. The realistic
+causes are an exceeded quota or an unavailable IndexedDB, and a device that cannot
+write a handful of rows cannot log a workout either — better to learn that at home
+than mid-session.
+
+| Revision | Change | Size |
+| --- | --- | --- |
+| 1 | Initial library: strength, powerlifting and olympic categories with mappable equipment | 587 |
+| 2 | Added the plyometrics category and the `medicine_ball` equipment member | 650 |
 
 ### Routine
 
@@ -127,8 +155,11 @@ exerciseId · order · supersetGroup? · restSeconds?
 targetSets? · targetRepMin? · targetRepMax?
 ```
 
-The three `target*` fields are unused in v1. They are the forward-compatibility hook
-for suggested progression (v3), so adding that feature later requires no migration.
+The three `target*` fields hold the **prescription** — "4 × 6–8, 2–3 min rest".
+Plan 3 surfaces them in the routine editor and shows them alongside last session's
+numbers while logging, which is where a target earns its keep. They are distinct from
+*suggested* progression (v3), which would compute the next target rather than record
+the one the user chose.
 
 ### Cycle
 
@@ -318,11 +349,18 @@ basement, the exact environment where it must work.
 
 ### v1 — the spine
 
-- Bundled exercise library of roughly 590 exercises, sourced from `free-exercise-db`
+- Bundled exercise library of roughly 650 exercises, sourced from `free-exercise-db`
   (public domain) and re-tagged to this schema's muscle, equipment and
   `measurementType` vocabularies. The source set holds 873; filtering to strength,
-  powerlifting and olympic categories with mappable equipment yields 587. Images are
-  not bundled; instructions are.
+  powerlifting, olympic and plyometrics categories yields 650. Images are not bundled;
+  instructions are.
+
+  Plyometrics is the one category that keeps entries whose equipment does not map.
+  There "other" means a box, a cone, or nothing at all, and the movement is still
+  usable; everywhere else it means gear this app does not model. Plyometrics also gets
+  its `measurementType` from the category rather than the equipment, since a box jump
+  is rep-counted and unloaded — without that rule the entries with no mapped equipment
+  fall through to `weight_reps` and ask for a weight that does not exist.
 
   An earlier draft of this spec called for 150–250 on the assumption that a larger
   list would be unwieldy and heavy. Measurement contradicted both halves: the
@@ -333,6 +371,8 @@ basement, the exact environment where it must work.
 - Search and filter by muscle and equipment
 - Custom exercises, identical in shape to bundled ones
 - Routine create / edit / reorder
+- Per-item prescription on routines: target sets, rep range and rest (Plan 3)
+- Program template import, creating routines plus any missing custom exercises (Plan 3)
 - Cycle rotation and Today screen
 - Active session logging across all six measurement types, with last-time reference
 - Rest timer, timestamp-based, with Screen Wake Lock and re-acquisition on

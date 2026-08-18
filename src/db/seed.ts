@@ -4,47 +4,55 @@ import bundled from '../data/exercises.json';
 
 /**
  * The revision of the bundled exercise library currently shipped with the
- * app. Stamped onto the settings singleton when seeding actually happens, so
- * a future upgrade path can tell which devices need corrected bundled data
- * reconciled without needing a schema migration to add the field then.
+ * app. Stamped onto the settings singleton so a device that seeded an
+ * earlier revision can be brought up to date without a schema migration.
+ *
+ * Revision 2 widened the library to the plyometrics category and gave
+ * medicine-ball movements their own equipment member: 587 entries to 650.
  */
-export const LIBRARY_VERSION = 1;
+export const LIBRARY_VERSION = 2;
 
 /**
- * Populates the bundled exercise library on first run.
+ * Brings the device's bundled library up to the revision shipped with this
+ * build, and returns the number of exercises inserted.
  *
- * Seeds only when no bundled exercises are present, so it never disturbs the
- * user's custom exercises and never resurrects ones they archived.
- * Returns the number of exercises inserted.
+ * First run and upgrade are deliberately the same operation: "insert every
+ * bundled exercise whose id is not already present" seeds the whole library
+ * on an empty database and adds only the new entries on a device seeded
+ * earlier. There is no separate upgrade path to keep correct.
  *
- * The check and the insert run in one transaction. React StrictMode invokes
- * effects twice in development, so without it two calls can both observe an
- * empty table and the second bulkAdd fails on duplicate keys.
+ * This is safe only because a library revision is additive. Bundled ids are
+ * upstream slugs that never change, so a row that is present is a row this
+ * function leaves entirely alone — which is what preserves exercises the
+ * user archived or edited. Correcting the *contents* of an existing entry
+ * is a different problem and deliberately not solved here.
  *
- * When seeding actually happens, the settings singleton is stamped with the
- * seeded library version in the same transaction. A no-op seed leaves
- * settings untouched.
+ * The version check and the insert share one transaction. React StrictMode
+ * invokes effects twice in development, so without it two calls can both
+ * observe an out-of-date library and the second bulkAdd fails on duplicate
+ * keys.
  */
-export async function seedExercisesIfEmpty(): Promise<number> {
+export async function prepareLibrary(): Promise<number> {
   return db.transaction('rw', db.exercises, db.settings, async () => {
-    const existingBundled = await db.exercises
-      .filter((e) => !e.isCustom)
-      .count();
-    if (existingBundled > 0) return 0;
+    const settings = await db.settings.get(SETTINGS_ID);
+    // Unset means a device seeded before the field existed, which is older
+    // than every stamped revision — exactly what 0 sorts as.
+    const seeded = settings?.libraryVersion ?? 0;
+    if (seeded >= LIBRARY_VERSION) return 0;
 
-    const exercises = bundled as Exercise[];
-    await db.exercises.bulkAdd(exercises);
+    const present = new Set(await db.exercises.toCollection().primaryKeys());
+    const missing = (bundled as Exercise[]).filter((e) => !present.has(e.id));
+    if (missing.length > 0) await db.exercises.bulkAdd(missing);
 
-    const existingSettings = await db.settings.get(SETTINGS_ID);
     await db.settings.put({
       id: SETTINGS_ID,
       unitPreference: 'lb',
       defaultRestSeconds: 90,
       restAlertSound: true,
-      ...existingSettings,
+      ...settings,
       libraryVersion: LIBRARY_VERSION,
     });
 
-    return exercises.length;
+    return missing.length;
   });
 }

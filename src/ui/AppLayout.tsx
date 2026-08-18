@@ -1,6 +1,6 @@
 import { useEffect, useState } from 'react';
 import { NavLink, Outlet } from 'react-router-dom';
-import { seedExercisesIfEmpty } from '../db/seed';
+import { prepareLibrary } from '../db/seed';
 
 const TABS = [
   { to: '/', label: 'Today', end: true },
@@ -15,7 +15,7 @@ export function AppLayout() {
 
   useEffect(() => {
     let cancelled = false;
-    seedExercisesIfEmpty()
+    prepareLibrary()
       .then(() => { if (!cancelled) setReady(true); })
       .catch((e: unknown) => {
         // Failing loudly matters here: a silent failure would leave the app
