@@ -9,7 +9,7 @@ export type MuscleGroup =
 
 export type Equipment =
   | 'barbell' | 'dumbbell' | 'machine' | 'cable' | 'bodyweight'
-  | 'kettlebell' | 'band' | 'smith' | 'ez_bar' | 'other';
+  | 'kettlebell' | 'band' | 'smith' | 'ez_bar' | 'medicine_ball' | 'other';
 
 export type MeasurementType =
   | 'weight_reps'

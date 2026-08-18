@@ -99,6 +99,25 @@
     "isArchived": false
   },
   {
+    "id": "Alternate_Leg_Diagonal_Bound",
+    "name": "Alternate Leg Diagonal Bound",
+    "primaryMuscles": [
+      "quads"
+    ],
+    "secondaryMuscles": [
+      "abductors",
+      "adductors",
+      "calves",
+      "glutes",
+      "hamstrings"
+    ],
+    "equipment": "other",
+    "measurementType": "bodyweight_reps",
+    "instructions": "Assume a comfortable stance with one foot slightly in front of the other. Begin by pushing off with the front leg, driving the opposite knee forward and as high as possible before landing. Attempt to cover as much distance to each side with each bound. It may help to use a line on the ground to guage distance from side to side. Repeat the sequence with the other leg.",
+    "isCustom": false,
+    "isArchived": false
+  },
+  {
     "id": "Alternating_Cable_Shoulder_Press",
     "name": "Alternating Cable Shoulder Press",
     "primaryMuscles": [
@@ -273,6 +292,19 @@
     "equipment": "band",
     "measurementType": "weight_reps",
     "instructions": "Run a band around a stationary post like that of a squat rack. Grab the band by the handles and stand back so that the tension in the band rises. Extend and lift the arms straight in front of you. Tip: Your arms should be straight and parallel to the floor while perpendicular to your torso. Your feet should be firmly planted on the floor spread at shoulder width. This will be your starting position. As you exhale, move your arms to the sides and back. Keep your arms extended and parallel to the floor. Continue the movement until the arms are extended to your sides. After a pause, go back to the original position as you inhale. Repeat for the recommended amount of repetitions.",
+    "isCustom": false,
+    "isArchived": false
+  },
+  {
+    "id": "Backward_Medicine_Ball_Throw",
+    "name": "Backward Medicine Ball Throw",
+    "primaryMuscles": [
+      "delts"
+    ],
+    "secondaryMuscles": [],
+    "equipment": "medicine_ball",
+    "measurementType": "weight_reps",
+    "instructions": "This exercise is best done with a partner. If you lack a partner, the ball can be thrown and retrieved or thrown against a wall. Begin standing a few meters in front of your partner, both facing the same direction. Begin holding the ball between your legs. Squat down and then forcefully reverse direction, coming to full extension and you toss the ball over your head to your partner. Your partner can then roll the ball back to you. Repeat for the desired number of repetitions.",
     "isCustom": false,
     "isArchived": false
   },
@@ -792,6 +824,23 @@
     "isArchived": false
   },
   {
+    "id": "Bench_Jump",
+    "name": "Bench Jump",
+    "primaryMuscles": [
+      "quads"
+    ],
+    "secondaryMuscles": [
+      "calves",
+      "glutes",
+      "hamstrings"
+    ],
+    "equipment": "bodyweight",
+    "measurementType": "bodyweight_reps",
+    "instructions": "Begin with a box or bench 1-2 feet in front of you. Stand with your feet shoulder width apart. This will be your starting position. Perform a short squat in preparation for the jump; swing your arms behind you. Rebound out of this position, extending through the hips, knees, and ankles to jump as high as possible. Swing your arms forward and up. Jump over the bench, landing with the knees bent, absorbing the impact through the legs. Turn around and face the opposite direction, then jump back over the bench.",
+    "isCustom": false,
+    "isArchived": false
+  },
+  {
     "id": "Bench_Press_-_Powerlifting",
     "name": "Bench Press - Powerlifting",
     "primaryMuscles": [
@@ -839,6 +888,23 @@
     "equipment": "barbell",
     "measurementType": "weight_reps",
     "instructions": "Adjust the leader chain, shortening it to the desired length.Place the chains on the sleeves of the bar. Lying on the bench, get your head beyond the bar if possible. Tuck your feet underneath you and arch your back. Using the bar to help support your weight, lift your shoulder off the bench and retract them, squeezing the shoulder blades together. Use your feet to drive your traps into the bench. Maintain this tight body position throughout the movement. However wide your grip, it should cover the ring on the bar. Pull the bar out of the rack without protracting your shoulders. Focus on squeezing the bar and trying to pull it apart. Lower the bar to your lower chest or upper stomach. The bar, wrist, and elbow should stay in line at all times. Pause when the barbell touches your torso, and then drive the bar up with as much force as possible. The elbows should be tucked in until lockout.",
+    "isCustom": false,
+    "isArchived": false
+  },
+  {
+    "id": "Bench_Sprint",
+    "name": "Bench Sprint",
+    "primaryMuscles": [
+      "quads"
+    ],
+    "secondaryMuscles": [
+      "calves",
+      "glutes",
+      "hamstrings"
+    ],
+    "equipment": "other",
+    "measurementType": "bodyweight_reps",
+    "instructions": "Stand on the ground with one foot resting on a bench or box with your heel close to the edge. Push off with your foot on top of the bench, extending through the hip and knee. Land with the opposite foot on top of the box, returning your other foot back to the start position. Continue alternating from one foot to another to complete the set.",
     "isCustom": false,
     "isArchived": false
   },
@@ -1143,6 +1209,44 @@
     "equipment": "kettlebell",
     "measurementType": "weight_reps",
     "instructions": "Initiate the exercise by standing upright with a kettlebell in one hand. Swing the kettlebell back forcefully and then reverse the motion forcefully. Crush the kettlebell handle as hard as possible and raise the kettlebell to your shoulder.",
+    "isCustom": false,
+    "isArchived": false
+  },
+  {
+    "id": "Box_Jump_Multiple_Response",
+    "name": "Box Jump (Multiple Response)",
+    "primaryMuscles": [
+      "hamstrings"
+    ],
+    "secondaryMuscles": [
+      "abductors",
+      "adductors",
+      "calves",
+      "glutes",
+      "quads"
+    ],
+    "equipment": "other",
+    "measurementType": "bodyweight_reps",
+    "instructions": "Assume a relaxed stance facing the box or platform approximately an arm's length away. Arms should be down at the sides and legs slightly bent. Using the arms to aid in the initial burst, jump upward and forward, landing with feet simultaneously on top of the box or platform. Immediately drop or jump back down to the original starting place; then repeat the sequence.",
+    "isCustom": false,
+    "isArchived": false
+  },
+  {
+    "id": "Box_Skip",
+    "name": "Box Skip",
+    "primaryMuscles": [
+      "hamstrings"
+    ],
+    "secondaryMuscles": [
+      "abductors",
+      "adductors",
+      "calves",
+      "glutes",
+      "quads"
+    ],
+    "equipment": "other",
+    "measurementType": "bodyweight_reps",
+    "instructions": "You will need several boxes lined up about 8 feet apart. Begin facing the first box with one leg slightly behind the other. Drive off the back leg, attempting to gain as much height with the hips as possible. Immediately upon landing on the box, drive the other leg forward and upward to gain height and distance, leaping from the box. Land between the first two boxes with the same leg that landed on the first box. Then, step to the next box and repeat.",
     "isCustom": false,
     "isArchived": false
   },
@@ -1674,6 +1778,43 @@
     "isArchived": false
   },
   {
+    "id": "Carioca_Quick_Step",
+    "name": "Carioca Quick Step",
+    "primaryMuscles": [
+      "adductors"
+    ],
+    "secondaryMuscles": [
+      "abs",
+      "abductors",
+      "calves",
+      "glutes",
+      "hamstrings",
+      "quads"
+    ],
+    "equipment": "other",
+    "measurementType": "bodyweight_reps",
+    "instructions": "Begin with your feet a few inches apart and your left arm up in a relaxed, athletic position. With your right foot, quick step behind and pull the knee up. Fire your arms back up when you pull the right knee, being sure that your knee goes straight up and down. Avoid turning your feet as you move and continue to look forward as you move to the side.",
+    "isCustom": false,
+    "isArchived": false
+  },
+  {
+    "id": "Catch_and_Overhead_Throw",
+    "name": "Catch and Overhead Throw",
+    "primaryMuscles": [
+      "lats"
+    ],
+    "secondaryMuscles": [
+      "abs",
+      "chest",
+      "delts"
+    ],
+    "equipment": "medicine_ball",
+    "measurementType": "weight_reps",
+    "instructions": "Begin standing while facing a wall or a partner. Using both hands, position the ball behind your head, stretching as much as possible, and forcefully throw the ball forward. Ensure that you follow your throw through, being prepared to receive your rebound from your throw. If you are throwing against the wall, make sure that you stand close enough to the wall to receive the rebound, and aim a little higher than you would with a partner.",
+    "isCustom": false,
+    "isArchived": false
+  },
+  {
     "id": "Chair_Squat",
     "name": "Chair Squat",
     "primaryMuscles": [
@@ -1687,6 +1828,74 @@
     "equipment": "machine",
     "measurementType": "weight_reps",
     "instructions": "To begin, first set the bar to a position that best matches your height. Once the bar is loaded, step under it and position it across the back of your shoulders. Take the bar with your hands facing forward, unlock it and lift it off the rack by extending your legs. Move your feet forward about 18 inches in front of the bar. Position your legs using a shoulder width stance with the toes slightly pointed out. Look forward at all times and maintain a neutral or slightly arched spine. This will be your starting position. Slowly lower the bar by bending the knees as you maintain a straight posture with the head up. Continue down until the angle between the upper and lower leg breaks 90 degrees. Begin to raise the bar as you exhale by pushing the floor with the heels of your feet, extending the knees and returning to the starting position. Repeat for the recommended amount of repetitions.",
+    "isCustom": false,
+    "isArchived": false
+  },
+  {
+    "id": "Chest_Push_multiple_response",
+    "name": "Chest Push (multiple response)",
+    "primaryMuscles": [
+      "chest"
+    ],
+    "secondaryMuscles": [
+      "abs",
+      "delts",
+      "triceps"
+    ],
+    "equipment": "medicine_ball",
+    "measurementType": "weight_reps",
+    "instructions": "Begin in a kneeling position facing a wall or utilize a partner. Hold the ball with both hands tight into the chest. Execute the pass by exploding forward and outward with the hips while pushing the ball as hard as possible. Follow through by falling forward, catching yourself with your hands. Immediately return to an upright position. Repeat for the desired number of repetitions.",
+    "isCustom": false,
+    "isArchived": false
+  },
+  {
+    "id": "Chest_Push_single_response",
+    "name": "Chest Push (single response)",
+    "primaryMuscles": [
+      "chest"
+    ],
+    "secondaryMuscles": [
+      "abs",
+      "delts",
+      "triceps"
+    ],
+    "equipment": "medicine_ball",
+    "measurementType": "weight_reps",
+    "instructions": "Begin in a kneeling position holding the medicine ball with both hands tightly into the chest. Execute the pass by exploding forward and outward with the hips while pushing the ball as far as possible. Follow through by falling forward, catching yourself with your hands.",
+    "isCustom": false,
+    "isArchived": false
+  },
+  {
+    "id": "Chest_Push_from_3_point_stance",
+    "name": "Chest Push from 3 point stance",
+    "primaryMuscles": [
+      "chest"
+    ],
+    "secondaryMuscles": [
+      "abs",
+      "delts",
+      "triceps"
+    ],
+    "equipment": "medicine_ball",
+    "measurementType": "weight_reps",
+    "instructions": "Begin in a three point stance, squatted down with your back flat and one hand on the ground. Place the medicine ball directly in front of you. To begin, take your first step as you pull the ball to your chest, positioning both hands to prepare for the throw. As you execute the second step, explosively release the ball forward as hard as possible.",
+    "isCustom": false,
+    "isArchived": false
+  },
+  {
+    "id": "Chest_Push_with_Run_Release",
+    "name": "Chest Push with Run Release",
+    "primaryMuscles": [
+      "chest"
+    ],
+    "secondaryMuscles": [
+      "abs",
+      "delts",
+      "triceps"
+    ],
+    "equipment": "medicine_ball",
+    "measurementType": "weight_reps",
+    "instructions": "Begin in an athletic stance with the knees bent, hips back, and back flat. Hold the medicine ball near your legs. This will be your starting position. While taking your first step draw the medicine ball into your chest. As you take the second step, explosively push the ball forward, immediately sprinting for 10 yards after the release. If you are really fast, you can catch your own pass!",
     "isCustom": false,
     "isArchived": false
   },
@@ -2332,6 +2541,25 @@
     "isArchived": false
   },
   {
+    "id": "Depth_Jump_Leap",
+    "name": "Depth Jump Leap",
+    "primaryMuscles": [
+      "quads"
+    ],
+    "secondaryMuscles": [
+      "abductors",
+      "adductors",
+      "calves",
+      "glutes",
+      "hamstrings"
+    ],
+    "equipment": "other",
+    "measurementType": "bodyweight_reps",
+    "instructions": "For this drill you will need two boxes or benches, one 12 to 16 inches high and the other 22 to 26 inches high. Stand on one of the two boxes with arms at the sides; feet should be together and slightly off the edge as in the depth jump. Place the other box approximately two or three feet in front of and facing the performer. Begin by dropping off the initial box, landing and simultaneously taking off with both feet. Rebound by driving upward and outward as intensely as possible, using the arms and full extension of the body to jump onto the higher box. Again, allow the legs to absorb the impact.",
+    "isCustom": false,
+    "isArchived": false
+  },
+  {
     "id": "Dip_Machine",
     "name": "Dip Machine",
     "primaryMuscles": [
@@ -2454,6 +2682,25 @@
     "isArchived": false
   },
   {
+    "id": "Double_Leg_Butt_Kick",
+    "name": "Double Leg Butt Kick",
+    "primaryMuscles": [
+      "quads"
+    ],
+    "secondaryMuscles": [
+      "abductors",
+      "adductors",
+      "calves",
+      "glutes",
+      "hamstrings"
+    ],
+    "equipment": "bodyweight",
+    "measurementType": "bodyweight_reps",
+    "instructions": "Begin standing with your knees slightly bent. Quickly squat a short distance, flexing the hips and knees, and immediately extend to jump for maximum vertical height. As you go up, tuck your heels by flexing the knees, attempting to touch the buttocks. Finish the motion by landing with the knees only partially bent, using your legs to absorb the impact.",
+    "isCustom": false,
+    "isArchived": false
+  },
+  {
     "id": "Drag_Curl",
     "name": "Drag Curl",
     "primaryMuscles": [
@@ -2465,6 +2712,22 @@
     "equipment": "barbell",
     "measurementType": "weight_reps",
     "instructions": "Grab a barbell with a supinated grip (palms facing forward) and get your elbows close to your torso and back. This will be your starting position. As you exhale, curl the bar up while keeping the elbows to the back as you \"Drag\" the bar up by keeping it in contact with your torso. Tip: As you can see, you will not be keeping the elbows pinned to your sides, but instead you will be bringing them back. Also, do not lift your shoulders. Slowly go back to the starting position as you keep the bar in contact with the torso at all times. Repeat for the recommended amount of repetitions.",
+    "isCustom": false,
+    "isArchived": false
+  },
+  {
+    "id": "Drop_Push",
+    "name": "Drop Push",
+    "primaryMuscles": [
+      "chest"
+    ],
+    "secondaryMuscles": [
+      "delts",
+      "triceps"
+    ],
+    "equipment": "other",
+    "measurementType": "bodyweight_reps",
+    "instructions": "Position low boxes or other platforms 2-3 feet apart. Move to a pushup position between them, supporting yourself by placing your hands on the boxes. With good posture, drop from the platforms by pressing up and moving your hands to shoulder width, cushioning your landing by absorbing the impact through the arm.",
     "isCustom": false,
     "isArchived": false
   },
@@ -2789,6 +3052,23 @@
     "isArchived": false
   },
   {
+    "id": "Dumbbell_Seated_Box_Jump",
+    "name": "Dumbbell Seated Box Jump",
+    "primaryMuscles": [
+      "quads"
+    ],
+    "secondaryMuscles": [
+      "calves",
+      "glutes",
+      "hamstrings"
+    ],
+    "equipment": "dumbbell",
+    "measurementType": "weight_reps",
+    "instructions": "Position a box a couple feet to the side of a bench. Hold a dumbbell to your chest with both hands and seat yourself on the bench facing the box. This will be your starting position. Plant your feet firmly on the ground as you lean forward, extending through the hips and knees to jump up and forward. Land on the box with both feet, absorbing the impact by allowing the hips and knees to bend. Step down and return to the starting position.",
+    "isCustom": false,
+    "isArchived": false
+  },
+  {
     "id": "Dumbbell_Seated_One-Leg_Calf_Raise",
     "name": "Dumbbell Seated One-Leg Calf Raise",
     "primaryMuscles": [
@@ -3052,6 +3332,25 @@
     "isArchived": false
   },
   {
+    "id": "Fast_Skipping",
+    "name": "Fast Skipping",
+    "primaryMuscles": [
+      "quads"
+    ],
+    "secondaryMuscles": [
+      "abductors",
+      "adductors",
+      "calves",
+      "glutes",
+      "hamstrings"
+    ],
+    "equipment": "bodyweight",
+    "measurementType": "bodyweight_reps",
+    "instructions": "Start in a relaxed position with one leg slightly forward. This will be your starting position. Skip by executing a step-hop pattern of right-right-step to left-left-step, and so on, alternating back and forth. Perform fast skips by maintaining close contact with the ground and reduce air time, moving as quickly as possible.",
+    "isCustom": false,
+    "isArchived": false
+  },
+  {
     "id": "Finger_Curls",
     "name": "Finger Curls",
     "primaryMuscles": [
@@ -3246,6 +3545,25 @@
     "isArchived": false
   },
   {
+    "id": "Front_Box_Jump",
+    "name": "Front Box Jump",
+    "primaryMuscles": [
+      "hamstrings"
+    ],
+    "secondaryMuscles": [
+      "abductors",
+      "adductors",
+      "calves",
+      "glutes",
+      "quads"
+    ],
+    "equipment": "other",
+    "measurementType": "bodyweight_reps",
+    "instructions": "Begin with a box of an appropriate height 1-2 feet in front of you. Stand with your feet should width apart. This will be your starting position. Perform a short squat in preparation for jumping, swinging your arms behind you. Rebound out of this position, extending through the hips, knees, and ankles to jump as high as possible. Swing your arms forward and up. Land on the box with the knees bent, absorbing the impact through the legs. You can jump from the box back to the ground, or preferably step down one leg at a time.",
+    "isCustom": false,
+    "isArchived": false
+  },
+  {
     "id": "Front_Cable_Raise",
     "name": "Front Cable Raise",
     "primaryMuscles": [
@@ -3255,6 +3573,25 @@
     "equipment": "cable",
     "measurementType": "weight_reps",
     "instructions": "Select the weight on a low pulley machine and grasp the single hand cable attachment that is attached to the low pulley with your left hand. Face away from the pulley and put your arm straight down with the hand cable attachment in front of your thighs at arms' length with the palms of the hand facing your thighs. This will be your starting position. While maintaining the torso stationary (no swinging), lift the left arm to the front with a slight bend on the elbow and the palms of the hand always faces down. Continue to go up until you arm is slightly above parallel to the floor. Exhale as you execute this portion of the movement and pause for a second at the top. Now as you inhale lower the arm back down slowly to the starting position. Once all of the recommended amount of repetitions have been performed for this arm, switch arms and perform the exercise with the right one.",
+    "isCustom": false,
+    "isArchived": false
+  },
+  {
+    "id": "Front_Cone_Hops_or_hurdle_hops",
+    "name": "Front Cone Hops (or hurdle hops)",
+    "primaryMuscles": [
+      "quads"
+    ],
+    "secondaryMuscles": [
+      "abductors",
+      "adductors",
+      "calves",
+      "glutes",
+      "hamstrings"
+    ],
+    "equipment": "other",
+    "measurementType": "bodyweight_reps",
+    "instructions": "Set up a row of cones or other small barriers, placing them a few feet apart. Stand in front of the first cone with your feet shoulder width apart. This will be your starting position. Begin by jumping with both feet over the first cone, swinging both arms as you jump. Absorb the impact of landing by bending the knees, rebounding out of the first leap by jumping over the next cone. Continue until you have jumped over all of the cones.",
     "isCustom": false,
     "isArchived": false
   },
@@ -3674,6 +4011,23 @@
     "isArchived": false
   },
   {
+    "id": "Heavy_Bag_Thrust",
+    "name": "Heavy Bag Thrust",
+    "primaryMuscles": [
+      "chest"
+    ],
+    "secondaryMuscles": [
+      "abs",
+      "delts",
+      "triceps"
+    ],
+    "equipment": "other",
+    "measurementType": "bodyweight_reps",
+    "instructions": "Utilize a heavy bag for this exercise. Assume an upright stance next to the bag, with your feet staggered, fairly wide apart. Place your hand on the bag at about chest height. This will be your starting position. Begin by twisting at the waist, pushing the bag forward as hard as possible. Perform this move quickly, pushing the bag away from your body. Receive the bag as it swings back by reversing these steps.",
+    "isCustom": false,
+    "isArchived": false
+  },
+  {
     "id": "High_Cable_Curls",
     "name": "High Cable Curls",
     "primaryMuscles": [
@@ -3727,6 +4081,25 @@
     "equipment": "band",
     "measurementType": "weight_reps",
     "instructions": "After choosing a suitable band, lay down in the middle of the rack, after securing the band on either side of you. If your rack doesn't have pegs, the band can be secured using heavy dumbbells or similar objects, just ensure they won't move. Adjust your position so that the band is directly over your hips. Bend your knees and place your feet flat on the floor. Your hands can be on the floor or holding the band in position. Keeping your shoulders on the ground, drive through your heels to raise your hips, pushing into the band as high as you can. Pause at the top of the motion, and return to the starting position.",
+    "isCustom": false,
+    "isArchived": false
+  },
+  {
+    "id": "Hurdle_Hops",
+    "name": "Hurdle Hops",
+    "primaryMuscles": [
+      "hamstrings"
+    ],
+    "secondaryMuscles": [
+      "abductors",
+      "adductors",
+      "calves",
+      "glutes",
+      "hamstrings"
+    ],
+    "equipment": "other",
+    "measurementType": "bodyweight_reps",
+    "instructions": "Set up a row of hurdles or other small barriers, placing them a few feet apart. Stand in front of the first hurdle with your feet shoulder width apart. This will be your starting position. Begin by jumping with both feet over the first hurdle, swinging both arms as you jump. Absorb the impact of landing by bending the knees, rebounding out of the first leap by jumping over the next hurdle. Continue until you have jumped over all of the hurdles.",
     "isCustom": false,
     "isArchived": false
   },
@@ -3942,6 +4315,22 @@
     "isArchived": false
   },
   {
+    "id": "Incline_Push-Up_Depth_Jump",
+    "name": "Incline Push-Up Depth Jump",
+    "primaryMuscles": [
+      "chest"
+    ],
+    "secondaryMuscles": [
+      "delts",
+      "triceps"
+    ],
+    "equipment": "other",
+    "measurementType": "bodyweight_reps",
+    "instructions": "For this drill you will need a box about 12 inches high, and two thick mats or aerobics steps. Place the steps just outside of your shoulders, and place your feet on top of the box so that you are in an incline pushup position, your hands just inside the steps. This will be your starting position. Begin by bending at the elbows to lower your body, quickly reversing position to push your body off of the ground. As you leave the ground, move your hands onto the steps, bending your elbows to absorb the impact. Repeat the motion to return to the starting position.",
+    "isCustom": false,
+    "isArchived": false
+  },
+  {
     "id": "Incline_Push-Up_Medium",
     "name": "Incline Push-Up Medium",
     "primaryMuscles": [
@@ -4021,6 +4410,22 @@
     ],
     "equipment": "dumbbell",
     "measurementType": "weight_reps",
+    "isCustom": false,
+    "isArchived": false
+  },
+  {
+    "id": "Isometric_Chest_Squeezes",
+    "name": "Isometric Chest Squeezes",
+    "primaryMuscles": [
+      "chest"
+    ],
+    "secondaryMuscles": [
+      "delts",
+      "triceps"
+    ],
+    "equipment": "bodyweight",
+    "measurementType": "bodyweight_reps",
+    "instructions": "While either seating or standing, bend your arms at a 90-degree angle and place the palms of your hands together in front of your chest. Tip: Your hands should be open with the palms together and fingers facing forward (perpendicular to your torso). Push both hands against each other as you contract your chest. Start with slow tension and increase slowly. Keep breathing normally as you execute this contraction. Hold for the recommended number of seconds. Now release the tension slowly. Rest for the recommended amount of time and repeat.",
     "isCustom": false,
     "isArchived": false
   },
@@ -4418,6 +4823,40 @@
     "isArchived": false
   },
   {
+    "id": "Knee_Tuck_Jump",
+    "name": "Knee Tuck Jump",
+    "primaryMuscles": [
+      "hamstrings"
+    ],
+    "secondaryMuscles": [
+      "abductors",
+      "adductors",
+      "calves",
+      "glutes",
+      "quads"
+    ],
+    "equipment": "bodyweight",
+    "measurementType": "bodyweight_reps",
+    "instructions": "Begin in a comfortable standing position with your knees slightly bent. Hold your hands in front of you, palms down with your fingertips together at chest height. This will be your starting position. Rapidly dip down into a quarter squat and immediately explode upward. Drive the knees towards the chest, attempting to touch them to the palms of the hands. Jump as high as you can, raising your knees up, and then ensure a good land be re-extending your legs, absorbing impact through be allowing the knees to rebend.",
+    "isCustom": false,
+    "isArchived": false
+  },
+  {
+    "id": "Kneeling_Arm_Drill",
+    "name": "Kneeling Arm Drill",
+    "primaryMuscles": [
+      "delts"
+    ],
+    "secondaryMuscles": [
+      "abs"
+    ],
+    "equipment": "other",
+    "measurementType": "bodyweight_reps",
+    "instructions": "This drill helps increase arm efficiency during the run. Begin kneeling, left foot in front, right knee down. Apply pressure through the front heel to keep your glutes and hamstrings activated. Begin by blocking the arms in long, pendulum like swings. Close the arm angle, blocking with the arms as you would when jogging, progressing to a run and finally a sprint. As soon as your hands pass the hip, accelerate them forward during the sprinting motion to move them as quickly as possible. Switch knees and repeat.",
+    "isCustom": false,
+    "isArchived": false
+  },
+  {
     "id": "Kneeling_Cable_Crunch_With_Alternating_Oblique_Twists",
     "name": "Kneeling Cable Crunch With Alternating Oblique Twists",
     "primaryMuscles": [
@@ -4543,6 +4982,63 @@
     "equipment": "barbell",
     "measurementType": "weight_reps",
     "instructions": "Position a bar into landmine or, lacking one, securely anchor it in a corner. Load the bar to an appropriate weight and position the handle attachment on the bar. Raise the bar from the floor, taking the handles to your shoulders. This will be your starting position. In an athletic stance, squat by flexing your hips and setting your hips back, keeping your arms flexed. Reverse the motion by powerfully extending through the hips, knees, and ankles, while also extending the elbows to straighten the arms. This movement should be done explosively, coming out of the squat to full extension as powerfully as possible. Return to the starting position.",
+    "isCustom": false,
+    "isArchived": false
+  },
+  {
+    "id": "Lateral_Bound",
+    "name": "Lateral Bound",
+    "primaryMuscles": [
+      "adductors"
+    ],
+    "secondaryMuscles": [
+      "abductors",
+      "calves",
+      "glutes",
+      "hamstrings",
+      "quads"
+    ],
+    "equipment": "bodyweight",
+    "measurementType": "bodyweight_reps",
+    "instructions": "Assume a half squat position facing 90 degrees from your direction of travel. This will be your starting position. Allow your lead leg to do a countermovement inward as you shift your weight to the outside leg. Immediately push off and extend, attempting to bound to the side as far as possible. Upon landing, immediately push off in the opposite direction, returning to your original start position. Continue back and forth for several repetitions.",
+    "isCustom": false,
+    "isArchived": false
+  },
+  {
+    "id": "Lateral_Box_Jump",
+    "name": "Lateral Box Jump",
+    "primaryMuscles": [
+      "adductors"
+    ],
+    "secondaryMuscles": [
+      "abductors",
+      "calves",
+      "glutes",
+      "hamstrings",
+      "quads"
+    ],
+    "equipment": "other",
+    "measurementType": "bodyweight_reps",
+    "instructions": "Assume a comfortable standing position, with a short box positioned next to you. This will be your starting position. Quickly dip into a quarter squat to initiate the stretch reflex, and immediately reverse direction to jump up and to the side. Bring your knees high enough to ensure your feet have good clearance over the box. Land on the center of the box, using your legs to absorb the impact. Carefully jump down to the other side of the box, and continue going back and forth for several repetitions.",
+    "isCustom": false,
+    "isArchived": false
+  },
+  {
+    "id": "Lateral_Cone_Hops",
+    "name": "Lateral Cone Hops",
+    "primaryMuscles": [
+      "adductors"
+    ],
+    "secondaryMuscles": [
+      "abductors",
+      "calves",
+      "glutes",
+      "hamstrings",
+      "quads"
+    ],
+    "equipment": "other",
+    "measurementType": "bodyweight_reps",
+    "instructions": "Position a number of cones in a row several feet apart. Stand next to the end of the cones, facing 90 degrees to the direction of travel. This will be your starting position. Begin the jump by dipping with the knees to initiate a stretch reflex, and immediately reverse direction to push off the ground, jumping up and sideways over the cone. Use your legs to absorb impact upon landing, and rebound into the next jump, continuing down the row of cones.",
     "isCustom": false,
     "isArchived": false
   },
@@ -4755,6 +5251,56 @@
     "equipment": "machine",
     "measurementType": "weight_reps",
     "instructions": "Load the pins to an appropriate weight. Position yourself directly between the handles. Grasp the top handles with a comfortable grip, and then lower your hips as you take a breath. Look forward with your head and keep your chest up. Drive through the floor with your heels, extending your hips and knees as you rise to a standing position. Keep your arms straight throughout the movement, finishing with your shoulders back. This will be your starting position. Raise the weight by shrugging the shoulders towards your ears, moving straight up and down. Pause at the top of the motion, and then return the weight to the starting position.",
+    "isCustom": false,
+    "isArchived": false
+  },
+  {
+    "id": "Linear_3-Part_Start_Technique",
+    "name": "Linear 3-Part Start Technique",
+    "primaryMuscles": [
+      "hamstrings"
+    ],
+    "secondaryMuscles": [
+      "calves",
+      "quads"
+    ],
+    "equipment": "other",
+    "measurementType": "bodyweight_reps",
+    "instructions": "This drill helps you accelerate as quickly as possible into a sprint from a dead stop. It helps to use a line to start from. Begin with two feet on the line. Place your left foot with the toe next to your right ankle. Place your right foot 4-6 inches behind the left. Place your right hand onto the line, and thing bring your nose close to your left knee. Squat down as you lean foward, your head being lower than your hips and your weight loaded onto the left leg. This will be your starting position. Take your left hand up so that it is parallel to the ground, pointing behind you, and explode out when ready.",
+    "isCustom": false,
+    "isArchived": false
+  },
+  {
+    "id": "Linear_Acceleration_Wall_Drill",
+    "name": "Linear Acceleration Wall Drill",
+    "primaryMuscles": [
+      "hamstrings"
+    ],
+    "secondaryMuscles": [
+      "calves",
+      "glutes",
+      "quads"
+    ],
+    "equipment": "other",
+    "measurementType": "bodyweight_reps",
+    "instructions": "Lean at around 45 degrees against a wall. Your feet should be together, glutes contracted. Begin by lifting your right knee quickly, pausing, and then driving it straight down into the ground. Switch legs, raising the opposite knee, and then attacking the ground straight down. Repeat once more with your right leg, and as soon as the right foot strikes the ground hammer them out rapidly, alternating left and right as fast as you can.",
+    "isCustom": false,
+    "isArchived": false
+  },
+  {
+    "id": "Linear_Depth_Jump",
+    "name": "Linear Depth Jump",
+    "primaryMuscles": [
+      "quads"
+    ],
+    "secondaryMuscles": [
+      "calves",
+      "glutes",
+      "hamstrings"
+    ],
+    "equipment": "other",
+    "measurementType": "bodyweight_reps",
+    "instructions": "You will need two boxes or benches spaced a few feet away from each other. Begin by standing on one box facing towards the other platform. To initiate the movement, gently drop down to the ground between your platforms, allowing the knees and hips to flex. Reverse the motion by exploding, extending through the hips, knees, and ankles to jump onto the other platform. Land softly, asborbing the impact through the legs.",
     "isCustom": false,
     "isArchived": false
   },
@@ -5104,6 +5650,54 @@
     "isArchived": false
   },
   {
+    "id": "Medicine_Ball_Chest_Pass",
+    "name": "Medicine Ball Chest Pass",
+    "primaryMuscles": [
+      "chest"
+    ],
+    "secondaryMuscles": [
+      "delts",
+      "triceps"
+    ],
+    "equipment": "medicine_ball",
+    "measurementType": "weight_reps",
+    "instructions": "You will need a partner for this exercise. Lacking one, this movement can be performed against a wall. Begin facing your partner holding the medicine ball at your torso with both hands. Pull the ball to your chest, and reverse the motion by extending through the elbows. For sports applications, you can take a step as you throw. Your partner should catch the ball, and throw it back to you. Receive the throw with both hands at chest height.",
+    "isCustom": false,
+    "isArchived": false
+  },
+  {
+    "id": "Medicine_Ball_Full_Twist",
+    "name": "Medicine Ball Full Twist",
+    "primaryMuscles": [
+      "abs"
+    ],
+    "secondaryMuscles": [
+      "delts"
+    ],
+    "equipment": "medicine_ball",
+    "measurementType": "weight_reps",
+    "instructions": "For this exercise you will need a medicine ball and a partner. Stand back to back with your partner, spaced 2-3 feet apart. This will be your starting position. Hold the ball in front of the trunk. Open the hips and turn the shoulders at the same time as your partner. For full rotation, you and your partner should twist in the same direction, i.e. counter-clockwise. Pass the ball to your partner, and both of you can now twist in the opposite direction to repeat the procedure.",
+    "isCustom": false,
+    "isArchived": false
+  },
+  {
+    "id": "Medicine_Ball_Scoop_Throw",
+    "name": "Medicine Ball Scoop Throw",
+    "primaryMuscles": [
+      "delts"
+    ],
+    "secondaryMuscles": [
+      "abs",
+      "hamstrings",
+      "quads"
+    ],
+    "equipment": "medicine_ball",
+    "measurementType": "weight_reps",
+    "instructions": "Assume a semisquat stance with a medicine ball in your hands. Your arms should hang so the ball is near your feet. Begin by thrusting the hips forward as you extend through the legs, jumping up. As you do, swing your arms up and over your head, keeping them extended, releasing the ball at the peak of your movement. The goal is to throw the ball the greatest distance behind you.",
+    "isCustom": false,
+    "isArchived": false
+  },
+  {
     "id": "Middle_Back_Shrug",
     "name": "Middle Back Shrug",
     "primaryMuscles": [
@@ -5126,6 +5720,39 @@
     "equipment": "band",
     "measurementType": "weight_reps",
     "instructions": "Place a band around both ankles and another around both knees. There should be enough tension that they are tight when your feet are shoulder width apart. To begin, take short steps forward alternating your left and right foot. After several steps, do just the opposite and walk backward to where you started.",
+    "isCustom": false,
+    "isArchived": false
+  },
+  {
+    "id": "Mountain_Climbers",
+    "name": "Mountain Climbers",
+    "primaryMuscles": [
+      "quads"
+    ],
+    "secondaryMuscles": [
+      "chest",
+      "hamstrings",
+      "delts"
+    ],
+    "equipment": "other",
+    "measurementType": "bodyweight_reps",
+    "instructions": "Begin in a pushup position, with your weight supported by your hands and toes. Flexing the knee and hip, bring one leg until the knee is approximately under the hip. This will be your starting position. Explosively reverse the positions of your legs, extending the bent leg until the leg is straight and supported by the toe, and bringing the other foot up with the hip and knee flexed. Repeat in an alternating fashion for 20-30 seconds.",
+    "isCustom": false,
+    "isArchived": false
+  },
+  {
+    "id": "Moving_Claw_Series",
+    "name": "Moving Claw Series",
+    "primaryMuscles": [
+      "hamstrings"
+    ],
+    "secondaryMuscles": [
+      "calves",
+      "quads"
+    ],
+    "equipment": "other",
+    "measurementType": "bodyweight_reps",
+    "instructions": "This move helps prepare your running form to help you excel at sprinting. As you run, be sure to flex the knee, aiming to kick your glutes as the hip extends. Reload the quad as the leg moves back forward, attacking the ground on the next step. Ensure that as you run, you block with the arms, punching through in a rapid 1-2 motion.",
     "isCustom": false,
     "isArchived": false
   },
@@ -5650,6 +6277,22 @@
     "isArchived": false
   },
   {
+    "id": "One-Arm_Medicine_Ball_Slam",
+    "name": "One-Arm Medicine Ball Slam",
+    "primaryMuscles": [
+      "abs"
+    ],
+    "secondaryMuscles": [
+      "lats",
+      "delts"
+    ],
+    "equipment": "medicine_ball",
+    "measurementType": "weight_reps",
+    "instructions": "Start in a standing position with a staggered, athletic stance. Hold a medicine ball in one hand, on the same side as your back leg. This will be your starting position. Begin by winding the arm, raising the medicine ball above your head. As you do so, extend through the hips, knees, and ankles to load up for the slam. At peak extension, flex the shoulders, spine, and hips to throw the ball hard into the ground directly in front of you. Catch the ball on the bounce and continue for the desired number of repetitions.",
+    "isCustom": false,
+    "isArchived": false
+  },
+  {
     "id": "One-Arm_Open_Palm_Kettlebell_Clean",
     "name": "One-Arm Open Palm Kettlebell Clean",
     "primaryMuscles": [
@@ -5762,6 +6405,19 @@
     "equipment": "cable",
     "measurementType": "weight_reps",
     "instructions": "To begin, set a weight that is comfortable on each side of the pulley machine. Note: Make sure that the amount of weight selected is the same on each side. Now adjust the height of the pulleys on each side and make sure that they are positioned at a height higher than that of your shoulders. Stand in the middle of both sides and use an underhand grip (palms facing towards the ceiling) to grab each handle. Your arms should be fully extended and parallel to the floor with your feet positioned shoulder width apart from each other. Your body should be evenly aligned the handles. This is the starting position. While exhaling, slowly squeeze the biceps on each side until your forearms and biceps touch. While inhaling, move your forearms back to the starting position. Note: Your entire body is stationary during this exercise except for the forearms. Repeat for the recommended amount of repetitions prescribed in your program.",
+    "isCustom": false,
+    "isArchived": false
+  },
+  {
+    "id": "Overhead_Slam",
+    "name": "Overhead Slam",
+    "primaryMuscles": [
+      "lats"
+    ],
+    "secondaryMuscles": [],
+    "equipment": "medicine_ball",
+    "measurementType": "weight_reps",
+    "instructions": "Hold a medine ball with both hands and stand with your feet at shoulder width. This will be your starting position. Initiate the countermovement by raising the ball above your head and fully extending your body. Reverse the motion, slamming the ball into the ground directly in front of you as hard as you can. Receive the ball with both hands on the bounce and repeat the movement.",
     "isCustom": false,
     "isArchived": false
   },
@@ -5935,6 +6591,22 @@
     "equipment": "kettlebell",
     "measurementType": "weight_reps",
     "instructions": "Place a kettlebell on the floor. Place yourself in a pushup position, on your toes with one hand on the ground and one hand holding the kettlebell, with your elbows extended. This will be your starting position. Begin by lowering yourself as low as you can, keeping your back straight. Quickly and forcefully reverse direction, pushing yourself up to the other side of the kettlebell, switching hands as you do so. Continue the movement by descending and repeating the movement back and forth.",
+    "isCustom": false,
+    "isArchived": false
+  },
+  {
+    "id": "Plyo_Push-up",
+    "name": "Plyo Push-up",
+    "primaryMuscles": [
+      "chest"
+    ],
+    "secondaryMuscles": [
+      "delts",
+      "triceps"
+    ],
+    "equipment": "bodyweight",
+    "measurementType": "bodyweight_reps",
+    "instructions": "Move into a prone position on the floor, supporting your weight on your hands and toes. Your arms should be fully extended with the hands around shoulder width. Keep your body straight throughout the movement. This will be your starting position. Descend by flexing at the elbow, lowering your chest towards the ground. At the bottom, reverse the motion by pushing yourself up through elbow extension as quickly as possible. Attempt to push your upper body up until your hands leave the ground. Return to the starting position and repeat the exercise. For added difficulty, add claps into the movement while you are air borne.",
     "isCustom": false,
     "isArchived": false
   },
@@ -6260,6 +6932,22 @@
     "isArchived": false
   },
   {
+    "id": "Quick_Leap",
+    "name": "Quick Leap",
+    "primaryMuscles": [
+      "quads"
+    ],
+    "secondaryMuscles": [
+      "calves",
+      "hamstrings"
+    ],
+    "equipment": "other",
+    "measurementType": "bodyweight_reps",
+    "instructions": "You will need a box for this exerise. Begin facing the box standing 1-2 feet from its edge. By utilizing your hips, hop onto the box, landing on both legs. Ensure that you land with your legs bent and your feet flat. Immediately upon landing, fully extend through the entire body and swing your arms overhead to explode off of the box. Use your legs to absorb the impact of landing.",
+    "isCustom": false,
+    "isArchived": false
+  },
+  {
     "id": "Rack_Delivery",
     "name": "Rack Delivery",
     "primaryMuscles": [
@@ -6309,6 +6997,22 @@
     "equipment": "barbell",
     "measurementType": "weight_reps",
     "instructions": "Set up in a power rack with the bar on the pins. The pins should be set to the desired point; just below the knees, just above, or in the mid thigh position. Position yourself against the bar in proper deadlifting position. Your feet should be under your hips, your grip shoulder width, back arched, and hips back to engage the hamstrings. Since the weight is typically heavy, you may use a mixed grip, a hook grip, or use straps to aid in holding the weight. With your head looking forward, extend through the hips and knees, pulling the weight up and back until lockout. Be sure to pull your shoulders back as you complete the movement. Return the weight to the pins and repeat.",
+    "isCustom": false,
+    "isArchived": false
+  },
+  {
+    "id": "Return_Push_from_Stance",
+    "name": "Return Push from Stance",
+    "primaryMuscles": [
+      "delts"
+    ],
+    "secondaryMuscles": [
+      "chest",
+      "triceps"
+    ],
+    "equipment": "medicine_ball",
+    "measurementType": "weight_reps",
+    "instructions": "You will need a partner for this drill. Begin in an athletic 2 or 3 point stance. At the signal, move into a position to receive the pass from your partner. Catch the medicine ball with both hands and immediately throw it back to your partner. You can modify this drill by running different routes.",
     "isCustom": false,
     "isArchived": false
   },
@@ -6573,6 +7277,22 @@
     "isArchived": false
   },
   {
+    "id": "Rocket_Jump",
+    "name": "Rocket Jump",
+    "primaryMuscles": [
+      "quads"
+    ],
+    "secondaryMuscles": [
+      "calves",
+      "hamstrings"
+    ],
+    "equipment": "bodyweight",
+    "measurementType": "bodyweight_reps",
+    "instructions": "Begin in a relaxed stance with your feet shoulder width apart and hold your arms close to the body. To initiate the move, squat down halfway and explode back up as high as possible. Fully extend your entire body, reaching overhead as far as possible. As you land, absorb your impact through the legs.",
+    "isCustom": false,
+    "isArchived": false
+  },
+  {
     "id": "Rocking_Standing_Calf_Raise",
     "name": "Rocking Standing Calf Raise",
     "primaryMuscles": [
@@ -6658,6 +7378,22 @@
     "equipment": "bodyweight",
     "measurementType": "bodyweight_reps",
     "instructions": "Lie down on the floor placing your feet either under something that will not move or by having a partner hold them. Your legs should be bent at the knees. Elevate your upper body so that it creates an imaginary V-shape with your thighs. Your arms should be fully extended in front of you perpendicular to your torso and with the hands clasped. This is the starting position. Twist your torso to the right side until your arms are parallel with the floor while breathing out. Hold the contraction for a second and move back to the starting position while breathing out. Now move to the opposite side performing the same techniques you applied to the right side. Repeat for the recommended amount of repetitions.",
+    "isCustom": false,
+    "isArchived": false
+  },
+  {
+    "id": "Scissors_Jump",
+    "name": "Scissors Jump",
+    "primaryMuscles": [
+      "quads"
+    ],
+    "secondaryMuscles": [
+      "glutes",
+      "hamstrings"
+    ],
+    "equipment": "bodyweight",
+    "measurementType": "bodyweight_reps",
+    "instructions": "Assume a lunge stance position with one foot forward with the knee bent, and the rear knee nearly touching the ground. Ensure that the front knee is over the midline of the foot. Extending through both legs, jump as high as possible, swinging your arms to gain lift. As you jump as high as you can, switch the position of your legs, moving your front leg to the back and the rear leg to the front. As you land, absorb the impact through the legs by adopting the lunge position, and repeat.",
     "isCustom": false,
     "isArchived": false
   },
@@ -7077,6 +7813,24 @@
     "isArchived": false
   },
   {
+    "id": "Side_Hop-Sprint",
+    "name": "Side Hop-Sprint",
+    "primaryMuscles": [
+      "quads"
+    ],
+    "secondaryMuscles": [
+      "abductors",
+      "adductors",
+      "calves",
+      "hamstrings"
+    ],
+    "equipment": "other",
+    "measurementType": "bodyweight_reps",
+    "instructions": "Stand to the side of a cone or hurdle. Begin this drill by hopping sideways over the obstacle, rebounding out of your landing to hop back to where you started. Hop for a prescribed number or repetitions as quickly as possible, and finish this drill by sprinting a short distance upon landing the last hop.",
+    "isCustom": false,
+    "isArchived": false
+  },
+  {
     "id": "Side_Jackknife",
     "name": "Side Jackknife",
     "primaryMuscles": [
@@ -7117,6 +7871,41 @@
     "isArchived": false
   },
   {
+    "id": "Side_Standing_Long_Jump",
+    "name": "Side Standing Long Jump",
+    "primaryMuscles": [
+      "quads"
+    ],
+    "secondaryMuscles": [
+      "calves",
+      "glutes",
+      "hamstrings"
+    ],
+    "equipment": "other",
+    "measurementType": "bodyweight_reps",
+    "instructions": "Begin standing with your feet hip width apart in an athletic stance. Your head and chest should be up, knees and hips slightly bent. This will be your starting position. Leaning to your right, extend through your hips, knees, and ankles to jump into the air. Block with the arms to lead the movement, jumping as far to your right as you can. Land facing the same direction with your feet hip width apart, absorbing the impact through your lower body.",
+    "isCustom": false,
+    "isArchived": false
+  },
+  {
+    "id": "Side_to_Side_Box_Shuffle",
+    "name": "Side to Side Box Shuffle",
+    "primaryMuscles": [
+      "quads"
+    ],
+    "secondaryMuscles": [
+      "abductors",
+      "adductors",
+      "calves",
+      "hamstrings"
+    ],
+    "equipment": "other",
+    "measurementType": "bodyweight_reps",
+    "instructions": "Stand to one side of the box with your left foot resting on the middle of it. To begin, jump up and over to the other side of the box, landing with your right foot on top of the box and your left foot on the floor. Swing your arms to aid your movement. Continue shuffling back and forth across the box.",
+    "isCustom": false,
+    "isArchived": false
+  },
+  {
     "id": "Single_Dumbbell_Raise",
     "name": "Single Dumbbell Raise",
     "primaryMuscles": [
@@ -7133,6 +7922,22 @@
     "isArchived": false
   },
   {
+    "id": "Single_Leg_Butt_Kick",
+    "name": "Single Leg Butt Kick",
+    "primaryMuscles": [
+      "quads"
+    ],
+    "secondaryMuscles": [
+      "calves",
+      "hamstrings"
+    ],
+    "equipment": "bodyweight",
+    "measurementType": "bodyweight_reps",
+    "instructions": "Begin by standing on one leg, with the bent knee raised. This will be your start position. Using a countermovement jump, take off upward by extending the hip, knee, and ankle of the grounded leg. Immediately flex the knee and attempt to touch your butt with the heel of your jumping leg. Return the leg to a partially bent position underneath the hips and land. Your opposite leg should stay in relatively the same position throughout the drill.",
+    "isCustom": false,
+    "isArchived": false
+  },
+  {
     "id": "Single_Leg_Glute_Bridge",
     "name": "Single Leg Glute Bridge",
     "primaryMuscles": [
@@ -7144,6 +7949,22 @@
     "equipment": "bodyweight",
     "measurementType": "bodyweight_reps",
     "instructions": "Lay on the floor with your feet flat and knees bent. Raise one leg off of the ground, pulling the knee to your chest. This will be your starting position. Execute the movement by driving through the heel, extending your hip upward and raising your glutes off of the ground. Extend as far as possible, pause and then return to the starting position.",
+    "isCustom": false,
+    "isArchived": false
+  },
+  {
+    "id": "Single_Leg_Push-off",
+    "name": "Single Leg Push-off",
+    "primaryMuscles": [
+      "quads"
+    ],
+    "secondaryMuscles": [
+      "calves",
+      "hamstrings"
+    ],
+    "equipment": "other",
+    "measurementType": "bodyweight_reps",
+    "instructions": "Stand on the ground with one foot resting on the box, heel close to the edge. Push off with your foot on top of the box, trying to gain as much height as possible by extending through the hip and knee. Land with the same foot on top of the box, returning your other foot back to the start position.",
     "isCustom": false,
     "isArchived": false
   },
@@ -7193,6 +8014,59 @@
     "isArchived": false
   },
   {
+    "id": "Single-Cone_Sprint_Drill",
+    "name": "Single-Cone Sprint Drill",
+    "primaryMuscles": [
+      "quads"
+    ],
+    "secondaryMuscles": [
+      "calves",
+      "glutes",
+      "hamstrings"
+    ],
+    "equipment": "other",
+    "measurementType": "bodyweight_reps",
+    "instructions": "This drill teaches quick foot action. You need a single cone. Begin standing next to the cone with one arm back and one arm forward. Chop the feet as quickly as possible, blocking with the arms. Circle the cone, keep your knees up, with violent foot action. Rest after three trips around the cone.",
+    "isCustom": false,
+    "isArchived": false
+  },
+  {
+    "id": "Single-Leg_Hop_Progression",
+    "name": "Single-Leg Hop Progression",
+    "primaryMuscles": [
+      "quads"
+    ],
+    "secondaryMuscles": [
+      "abductors",
+      "adductors",
+      "calves",
+      "hamstrings"
+    ],
+    "equipment": "other",
+    "measurementType": "bodyweight_reps",
+    "instructions": "Arrange a line of cones in front of you. Assume a relaxed standing position, balanced on one leg. Raise the knee of your opposite leg. This will be your starting position. Hop forward, jumping and landing with the same leg over the cone. Use a countermovement jump to hop from cone to cone. At the end, turn around and go back on the other leg.",
+    "isCustom": false,
+    "isArchived": false
+  },
+  {
+    "id": "Single-Leg_Lateral_Hop",
+    "name": "Single-Leg Lateral Hop",
+    "primaryMuscles": [
+      "quads"
+    ],
+    "secondaryMuscles": [
+      "abductors",
+      "adductors",
+      "calves",
+      "hamstrings"
+    ],
+    "equipment": "other",
+    "measurementType": "bodyweight_reps",
+    "instructions": "Stand to the side of a cone or hurdle. To get into the start position, stand on one leg with your knee slightly bent. To begin, execute a counterjump to hop sideways over the cone. Land on your jumping leg, and immediately rebound out of it by jumping back to the start position. Continue hopping back and forth.",
+    "isCustom": false,
+    "isArchived": false
+  },
+  {
     "id": "Single-Leg_Leg_Extension",
     "name": "Single-Leg Leg Extension",
     "primaryMuscles": [
@@ -7206,6 +8080,24 @@
     "isArchived": false
   },
   {
+    "id": "Single-Leg_Stride_Jump",
+    "name": "Single-Leg Stride Jump",
+    "primaryMuscles": [
+      "quads"
+    ],
+    "secondaryMuscles": [
+      "abductors",
+      "adductors",
+      "calves",
+      "hamstrings"
+    ],
+    "equipment": "other",
+    "measurementType": "bodyweight_reps",
+    "instructions": "Stand to the side of a box with your inside foot on top of it, close to the edge. Begin by swinging the arms upward as you push through the top leg, jumping upward as high as possible. Attempt to drive the opposite knee upward. Land in the same position that you started, using your inside leg to decelerate the impact.",
+    "isCustom": false,
+    "isArchived": false
+  },
+  {
     "id": "Sit-Up",
     "name": "Sit-Up",
     "primaryMuscles": [
@@ -7215,6 +8107,25 @@
     "equipment": "bodyweight",
     "measurementType": "bodyweight_reps",
     "instructions": "Lie down on the floor placing your feet either under something that will not move or by having a partner hold them. Your legs should be bent at the knees. Place your hands behind your head and lock them together by clasping your fingers. This is the starting position. Elevate your upper body so that it creates an imaginary V-shape with your thighs. Breathe out when performing this part of the exercise. Once you feel the contraction for a second, lower your upper body back down to the starting position while inhaling. Repeat for the recommended amount of repetitions.",
+    "isCustom": false,
+    "isArchived": false
+  },
+  {
+    "id": "Sledgehammer_Swings",
+    "name": "Sledgehammer Swings",
+    "primaryMuscles": [
+      "abs"
+    ],
+    "secondaryMuscles": [
+      "calves",
+      "forearms",
+      "lats",
+      "upper_back",
+      "delts"
+    ],
+    "equipment": "other",
+    "measurementType": "bodyweight_reps",
+    "instructions": "You will need a tire and a sledgehammer for this exercise. Stand in front of the tire about two feet away from it with a staggered stance. Grip the sledgehammer. If you are right handed, your left hand should be at the bottom of the handle, and your right hand should be choking up closer to the head. As you bring the sledge up, your right hand slides toward the head; as you swing down, your right hand will slide down to join your left hand. Slam it down as hard as you can against the tire. Control the bounce of the hammer off of the tire. Repeat on the other side.",
     "isCustom": false,
     "isArchived": false
   },
@@ -7771,6 +8682,23 @@
     "isArchived": false
   },
   {
+    "id": "Split_Jump",
+    "name": "Split Jump",
+    "primaryMuscles": [
+      "quads"
+    ],
+    "secondaryMuscles": [
+      "calves",
+      "glutes",
+      "hamstrings"
+    ],
+    "equipment": "bodyweight",
+    "measurementType": "bodyweight_reps",
+    "instructions": "Assume a lunge stance position with one foot forward with the knee bent, and the rear knee nearly touching the ground. Ensure that the front knee is over the midline of the foot. Extending through both legs, jump as high as possible, swinging your arms to gain lift. As you jump, bring your feet together, and move them back to their initial positions as you land. Absorb the impact by reverting back to the starting position.",
+    "isCustom": false,
+    "isArchived": false
+  },
+  {
     "id": "Split_Snatch",
     "name": "Split Snatch",
     "primaryMuscles": [
@@ -8201,6 +9129,23 @@
     "isArchived": false
   },
   {
+    "id": "Standing_Long_Jump",
+    "name": "Standing Long Jump",
+    "primaryMuscles": [
+      "quads"
+    ],
+    "secondaryMuscles": [
+      "calves",
+      "glutes",
+      "hamstrings"
+    ],
+    "equipment": "bodyweight",
+    "measurementType": "bodyweight_reps",
+    "instructions": "This drill is best done in sand or other soft landing surface. Ensure that you are able to measure distance. Stand in a partial squat stance with feet shoulder width apart. Utilizing a big arm swing and a countermovement of the legs, jump forward as far as you can. Attempt to land with your feet out in front you, reaching as far as possible with your legs. Measure the distance from your landing point to the starting point and track results.",
+    "isCustom": false,
+    "isArchived": false
+  },
+  {
     "id": "Standing_Low-Pulley_Deltoid_Raise",
     "name": "Standing Low-Pulley Deltoid Raise",
     "primaryMuscles": [
@@ -8373,6 +9318,40 @@
     "isArchived": false
   },
   {
+    "id": "Standing_Two-Arm_Overhead_Throw",
+    "name": "Standing Two-Arm Overhead Throw",
+    "primaryMuscles": [
+      "delts"
+    ],
+    "secondaryMuscles": [
+      "chest",
+      "lats"
+    ],
+    "equipment": "medicine_ball",
+    "measurementType": "weight_reps",
+    "instructions": "Stand with your feet shoulder width apart holding a medicine ball in both hands. To begin, reach the medicine ball deep behind your head as you bend the knees slightly and lean back. Violently throw the ball forward, flexing at the hip and using your whole body to complete the movement. The medicine ball can be thrown to a partner or to a wall, receiving it as it bounces back.",
+    "isCustom": false,
+    "isArchived": false
+  },
+  {
+    "id": "Star_Jump",
+    "name": "Star Jump",
+    "primaryMuscles": [
+      "quads"
+    ],
+    "secondaryMuscles": [
+      "calves",
+      "glutes",
+      "hamstrings",
+      "delts"
+    ],
+    "equipment": "bodyweight",
+    "measurementType": "bodyweight_reps",
+    "instructions": "Begin in a relaxed stance with your feet shoulder width apart and hold your arms close to the body. To initiate the move, squat down halfway and explode back up as high as possible. Fully extend your entire body, spreading your legs and arms away from the body. As you land, bring your limbs back in and absorb your impact through the legs.",
+    "isCustom": false,
+    "isArchived": false
+  },
+  {
     "id": "Step-up_with_Knee_Raise",
     "name": "Step-up with Knee Raise",
     "primaryMuscles": [
@@ -8498,6 +9477,24 @@
     "isArchived": false
   },
   {
+    "id": "Stride_Jump_Crossover",
+    "name": "Stride Jump Crossover",
+    "primaryMuscles": [
+      "quads"
+    ],
+    "secondaryMuscles": [
+      "abductors",
+      "adductors",
+      "calves",
+      "hamstrings"
+    ],
+    "equipment": "other",
+    "measurementType": "bodyweight_reps",
+    "instructions": "Stand to the side of a box with your inside foot on top of it, close to the edge. Begin by swinging the arms upward as you push through the top leg, jumping upward as high as possible. Attempt to drive the opposite knee upward. Land in the opposite position that you started, on the opposite side of the box. The foot that was initially on the box will now be on the ground, with the opposite foot now on the box. Repeat the movement, crossing back over to the other side.",
+    "isCustom": false,
+    "isArchived": false
+  },
+  {
     "id": "Sumo_Deadlift",
     "name": "Sumo Deadlift",
     "primaryMuscles": [
@@ -8558,6 +9555,56 @@
     "equipment": "barbell",
     "measurementType": "weight_reps",
     "instructions": "You can attach the chains to the sleeves of the bar, or just drape the middle over the bar so there is a greater weight increase as you lift. Attempt to keep the ends of the chains away from the plates so you don't hit them when you lower the weight. Begin with a bar loaded on the ground. Approach the bar so that the bar intersects the middle of the feet. The feet should be set very wide, near the collars. Bend at the hips to grip the bar. The arms should be directly below the shoulders, inside the legs, and you can use a pronated grip, a mixed grip, or hook grip. Relax the shoulders, which in effect lengthens your arms. Take a breath, and then lower your hips, looking forward with your head with your chest up. Drive through the floor, spreading your feet apart, with your weight on the back half of your feet. Extend through the hips and knees. As the bar passes through the knees, lean back and drive the hips into the bar, pulling your shoulder blades together. Return the weight to the ground by bending at the hips and controlling the weight on the way down.",
+    "isCustom": false,
+    "isArchived": false
+  },
+  {
+    "id": "Supine_Chest_Throw",
+    "name": "Supine Chest Throw",
+    "primaryMuscles": [
+      "triceps"
+    ],
+    "secondaryMuscles": [
+      "chest",
+      "delts"
+    ],
+    "equipment": "medicine_ball",
+    "measurementType": "weight_reps",
+    "instructions": "This drill is great for chest passes when you lack a partner or a wall of sufficient strength. Lay on the ground on your back with your knees bent. Begin with the ball on your chest, held with both hands on the bottom. Explode up, extending through the elbow to throw the ball directly above you as high as possible. Catch the ball with both hands as it comes down.",
+    "isCustom": false,
+    "isArchived": false
+  },
+  {
+    "id": "Supine_One-Arm_Overhead_Throw",
+    "name": "Supine One-Arm Overhead Throw",
+    "primaryMuscles": [
+      "abs"
+    ],
+    "secondaryMuscles": [
+      "chest",
+      "lats",
+      "delts"
+    ],
+    "equipment": "medicine_ball",
+    "measurementType": "weight_reps",
+    "instructions": "Lay on the ground on your back with your knees bent. Hold the ball with one hand, extending the arm fully behind your head. This will be your starting position. Initiate the movement at the shoulder, throwing the ball directly forward of you as you sit up, attempting to go for maximum distance. The ball can be thrown to a partner or bounced off of a wall.",
+    "isCustom": false,
+    "isArchived": false
+  },
+  {
+    "id": "Supine_Two-Arm_Overhead_Throw",
+    "name": "Supine Two-Arm Overhead Throw",
+    "primaryMuscles": [
+      "abs"
+    ],
+    "secondaryMuscles": [
+      "chest",
+      "lats",
+      "delts"
+    ],
+    "equipment": "medicine_ball",
+    "measurementType": "weight_reps",
+    "instructions": "Lay on the ground on your back with your knees bent. Hold the ball with both hands, extending the arms fully behind your head. This will be your starting position. Initiate the movement at the shoulder, throwing the ball directly forward of you as you sit up, attempting to go for maximum distance. The ball can be thrown to a partner or bounced off of a wall.",
     "isCustom": false,
     "isArchived": false
   },
@@ -8875,6 +9922,36 @@
     "equipment": "bodyweight",
     "measurementType": "bodyweight_reps",
     "instructions": "Start by placing the middle of the V-bar in the middle of the pull-up bar (assuming that the pull-up station you are using does not have neutral grip handles). The V-Bar handles will be facing down so that you can hang from the pull-up bar through the use of the handles. Once you securely place the V-bar, take a hold of the bar from each side and hang from it. Stick your chest out and lean yourself back slightly in order to better engage the lats. This will be your starting position. Using your lats, pull your torso up while leaning your head back slightly so that you do not hit yourself with the chin-up bar. Continue until your chest nearly touches the V-bar. Exhale as you execute this motion. After a second hold on the contracted position, slowly lower your body back to the starting position as you breathe in. Repeat for the prescribed number of repetitions.",
+    "isCustom": false,
+    "isArchived": false
+  },
+  {
+    "id": "Vertical_Swing",
+    "name": "Vertical Swing",
+    "primaryMuscles": [
+      "hamstrings"
+    ],
+    "secondaryMuscles": [
+      "glutes",
+      "quads",
+      "delts"
+    ],
+    "equipment": "dumbbell",
+    "measurementType": "weight_reps",
+    "instructions": "Allow the dumbbell to hang at arms length between your legs, holding it with both hands. Keep your back straight and your head up. Swing the dumbbell between your legs, flexing at the hips and bending the knees slightly. Powerfully reverse the motion by extending at the hips, knees, and ankles to propel yourself upward, swinging the dumbell over your head. As you land, absorb the impact through your legs and draw the dumbbell to your torso before the next repetition.",
+    "isCustom": false,
+    "isArchived": false
+  },
+  {
+    "id": "Weighted_Crunches",
+    "name": "Weighted Crunches",
+    "primaryMuscles": [
+      "abs"
+    ],
+    "secondaryMuscles": [],
+    "equipment": "medicine_ball",
+    "measurementType": "weight_reps",
+    "instructions": "Lie flat on your back with your feet flat on the ground or resting on a bench with your knees bent at a 90 degree angle. Hold a weight to your chest, or you may hold it extended above your torso. This will be your starting position. Now, exhale and slowly begin to roll your shoulders off the floor. Your shoulders should come up off the floor about 4 inches while your lower back remains on the floor. At the top of the movement, flex your abdominals and hold for a brief pause. Then inhale and slowly lower yourself back down to the starting position.",
     "isCustom": false,
     "isArchived": false
   },

@@ -34,6 +34,7 @@ const EQUIPMENT_LABELS: Record<Equipment, string> = {
   band: 'Band',
   smith: 'Smith machine',
   ez_bar: 'EZ bar',
+  medicine_ball: 'Medicine ball',
   other: 'Other',
 };
 

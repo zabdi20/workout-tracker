@@ -34,6 +34,10 @@ describe('mapEquipment', () => {
     expect(mapEquipment(null)).toBe('other');
     expect(mapEquipment('something new')).toBe('other');
   });
+
+  it('maps medicine ball to its own equipment member', () => {
+    expect(mapEquipment('medicine ball')).toBe('medicine_ball');
+  });
 });
 
 describe('mapMuscle', () => {
@@ -99,6 +103,33 @@ describe('inferMeasurementType', () => {
     expect(inferMeasurementType(source({ name: 'Iron Cross', equipment: 'dumbbell' })))
       .toBe('weight_reps');
   });
+
+  it('counts reps for plyometrics whose equipment is unmappable', () => {
+    // Box jumps, cone hops and shuffles carry no load. Without a category
+    // rule these fall through to weight_reps and ask for a weight that
+    // does not exist.
+    expect(inferMeasurementType(source({ category: 'plyometrics', equipment: 'other' })))
+      .toBe('bodyweight_reps');
+    expect(inferMeasurementType(source({ category: 'plyometrics', equipment: null })))
+      .toBe('bodyweight_reps');
+  });
+
+  it('counts reps for bodyweight plyometrics', () => {
+    expect(inferMeasurementType(source({ category: 'plyometrics', equipment: 'body only' })))
+      .toBe('bodyweight_reps');
+  });
+
+  it('records a load for plyometrics that carry one', () => {
+    expect(inferMeasurementType(source({ category: 'plyometrics', equipment: 'dumbbell' })))
+      .toBe('weight_reps');
+    expect(inferMeasurementType(source({ category: 'plyometrics', equipment: 'medicine ball' })))
+      .toBe('weight_reps');
+  });
+
+  it('lets a name override beat the plyometrics rule', () => {
+    expect(inferMeasurementType(source({ name: 'Plank', category: 'plyometrics', equipment: 'other' })))
+      .toBe('duration');
+  });
 });
 
 describe('shouldInclude', () => {
@@ -118,6 +149,28 @@ describe('shouldInclude', () => {
   it('drops exercises with no usable primary muscle', () => {
     expect(shouldInclude(source({ primaryMuscles: [] }))).toBe(false);
     expect(shouldInclude(source({ primaryMuscles: ['gizzard'] }))).toBe(false);
+  });
+
+  it('keeps plyometrics', () => {
+    expect(shouldInclude(source({ category: 'plyometrics', equipment: 'body only' }))).toBe(true);
+  });
+
+  it('keeps plyometrics whose equipment does not map, unlike every other category', () => {
+    // In plyometrics "other" means a box, a cone, or nothing at all, so the
+    // entry is still usable. Elsewhere it means gear this app does not model.
+    expect(shouldInclude(source({ category: 'plyometrics', equipment: 'other' }))).toBe(true);
+    expect(shouldInclude(source({ category: 'plyometrics', equipment: null }))).toBe(true);
+    expect(shouldInclude(source({ category: 'strength', equipment: 'other' }))).toBe(false);
+    expect(shouldInclude(source({ category: 'strength', equipment: null }))).toBe(false);
+  });
+
+  it('keeps medicine ball movements now that the equipment maps', () => {
+    expect(shouldInclude(source({ category: 'strength', equipment: 'medicine ball' }))).toBe(true);
+  });
+
+  it('still drops plyometrics with no usable primary muscle', () => {
+    expect(shouldInclude(source({ category: 'plyometrics', equipment: 'other', primaryMuscles: [] })))
+      .toBe(false);
   });
 });
 

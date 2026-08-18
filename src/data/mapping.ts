@@ -23,6 +23,7 @@ const EQUIPMENT: Record<string, Equipment> = {
   'body only': 'bodyweight',
   bands: 'band',
   'e-z curl bar': 'ez_bar',
+  'medicine ball': 'medicine_ball',
 };
 
 const MUSCLE: Record<string, MuscleGroup> = {
@@ -60,7 +61,12 @@ const MEASUREMENT_OVERRIDES: Array<[RegExp, MeasurementType]> = [
   [/\bfarmer'?s walk\b/i, 'weight_duration'],
 ];
 
-const KEPT_CATEGORIES = new Set(['strength', 'powerlifting', 'olympic weightlifting']);
+const KEPT_CATEGORIES = new Set([
+  'strength',
+  'powerlifting',
+  'olympic weightlifting',
+  'plyometrics',
+]);
 
 export function mapEquipment(source: string | null): Equipment {
   if (!source) return 'other';
@@ -82,13 +88,29 @@ export function inferMeasurementType(source: SourceExercise): MeasurementType {
   }
   if (source.category === 'cardio') return 'distance_duration';
   if (source.category === 'stretching') return 'duration';
+  // Plyometrics is jumps, bounds and hops: rep-counted, and unloaded unless
+  // the source names equipment that carries a load. Without this branch the
+  // entries whose equipment is "other" or absent fall through to the
+  // weight_reps default and ask for a weight that does not exist.
+  if (source.category === 'plyometrics') {
+    const equipment = mapEquipment(source.equipment);
+    return equipment === 'dumbbell' || equipment === 'medicine_ball'
+      ? 'weight_reps'
+      : 'bodyweight_reps';
+  }
   if (mapEquipment(source.equipment) === 'bodyweight') return 'bodyweight_reps';
   return 'weight_reps';
 }
 
 export function shouldInclude(source: SourceExercise): boolean {
   if (!KEPT_CATEGORIES.has(source.category)) return false;
-  if (mapEquipment(source.equipment) === 'other') return false;
+  // Unmappable equipment means different things by category. In plyometrics
+  // it is a box, a cone, or nothing at all, and the movement is still
+  // perfectly usable. Everywhere else it is gear this app does not model,
+  // so the entry is dropped.
+  if (source.category !== 'plyometrics' && mapEquipment(source.equipment) === 'other') {
+    return false;
+  }
   return mapMuscles(source.primaryMuscles).length > 0;
 }
 
