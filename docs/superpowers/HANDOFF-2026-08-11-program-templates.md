@@ -2,6 +2,9 @@
 
 > **Status: scoped and partly shipped. Read the Resolution first — the proposal below
 > it is preserved as background, and parts of it are now out of date.**
+>
+> **Picking up the work? Start from `HANDOFF-2026-08-17-plan-3-active-session.md`
+> instead.** This file is a closed record of how the scope was decided.
 
 ## Resolution — 2026-08-17
 
