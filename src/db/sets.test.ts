@@ -1,5 +1,5 @@
 import { db, resetDbForTests } from './db';
-import { deleteSet, listSetsForSession, logSet, updateSet } from './sets';
+import { deleteSet, lastPerformance, listSetsForSession, logSet, updateSet } from './sets';
 
 beforeEach(async () => {
   await resetDbForTests();
@@ -111,5 +111,60 @@ describe('deleteSet', () => {
     await deleteSet(first.id);
 
     expect(await listSetsForSession('s1')).toHaveLength(1);
+  });
+});
+
+describe('lastPerformance', () => {
+  it('returns an empty array when the exercise has no history', async () => {
+    expect(await lastPerformance('bench', 'current')).toEqual([]);
+  });
+
+  it('returns the previous session’s sets for that exercise, ordered', async () => {
+    await logSet(bench('older', 125, 8));
+    await logSet(bench('previous', 135, 8));
+    await logSet(bench('previous', 145, 6));
+    await logSet(bench('current', 155, 5));
+
+    const last = await lastPerformance('bench', 'current');
+
+    expect(last.map((s) => s.weight)).toEqual([135, 145]);
+  });
+
+  it('ignores other exercises in that session', async () => {
+    await logSet(bench('previous', 135, 8));
+    await logSet({ ...bench('previous', 0, 12), exerciseId: 'dip' });
+
+    const last = await lastPerformance('bench', 'current');
+
+    expect(last).toHaveLength(1);
+    expect(last[0].exerciseId).toBe('bench');
+  });
+
+  it('never returns sets from the excluded session', async () => {
+    await logSet(bench('current', 155, 5));
+    expect(await lastPerformance('bench', 'current')).toEqual([]);
+  });
+
+  it('keeps a session whole when its sets are not contiguous in time', async () => {
+    // A set edited in Plan 5 can carry a completedAt later than a newer
+    // session's. Selecting by sessionId rather than by a contiguous run
+    // keeps the previous session intact instead of truncating it.
+    const first = await logSet(bench('previous', 135, 8));
+    await logSet(bench('previous', 145, 6));
+    await logSet(bench('newer', 150, 5));
+    await db.sets.update(first.id, { completedAt: Date.now() + 60_000 });
+
+    const last = await lastPerformance('bench', 'current');
+
+    expect(last.map((s) => s.weight)).toEqual([135, 145]);
+  });
+
+  it('includes warm-up sets, leaving the split to the caller', async () => {
+    await logSet({ ...bench('previous', 45, 10), setType: 'warmup' });
+    await logSet(bench('previous', 135, 8));
+
+    const last = await lastPerformance('bench', 'current');
+
+    expect(last.map((s) => s.setType)).toEqual(['warmup', 'working']);
   });
 });
