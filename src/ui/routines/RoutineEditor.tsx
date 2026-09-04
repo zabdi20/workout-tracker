@@ -94,15 +94,27 @@ export function RoutineEditor() {
     }
 
     setPrescriptionError(null);
-    setDrafts((d) => {
-      const { [key]: _committed, ...rest } = d;
-      return rest;
-    });
-    await run(() =>
-      updateRoutineItems(currentId, (current) =>
+
+    // `wrote`, not a bare await: run() catches internally and never rejects,
+    // so the code after it runs on both outcomes. Clearing the draft before
+    // the write — or after it unconditionally — throws away what the user
+    // typed the moment a write fails and snaps the field back to the stored
+    // number, exactly when they need to retry rather than retype. Same shape
+    // as ActiveSessionScreen.confirmSet, for the same reason.
+    let wrote = false;
+    await run(async () => {
+      await updateRoutineItems(currentId, (current) =>
         setItemPrescription(current, itemId, { [field]: value }),
-      ),
-    );
+      );
+      wrote = true;
+    });
+
+    if (wrote) {
+      setDrafts((d) => {
+        const { [key]: _committed, ...rest } = d;
+        return rest;
+      });
+    }
   }
 
   return (

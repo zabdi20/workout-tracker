@@ -3,8 +3,21 @@ import userEvent from '@testing-library/user-event';
 import { MemoryRouter, Route, Routes } from 'react-router-dom';
 import { resetDbForTests } from '../../db/db';
 import { createCustomExercise, archiveExercise } from '../../db/exercises';
-import { createRoutine, getRoutine, setRoutineItems } from '../../db/routines';
+import {
+  createRoutine, getRoutine, setRoutineItems, updateRoutineItems,
+} from '../../db/routines';
 import { RoutineEditor } from './RoutineEditor';
+
+// Only updateRoutineItems is overridden, and only for the one test that
+// needs it to reject — vi.fn(actual.updateRoutineItems) calls through by
+// default, so mockRejectedValueOnce affects exactly one call and every
+// other invocation (including the editor's own move/remove writes) is
+// indistinguishable from the unmocked function against the real, reset
+// IndexedDB. Same seam as ActiveSessionScreen.test.tsx uses over logSet.
+vi.mock('../../db/routines', async (importOriginal) => {
+  const actual = await importOriginal<typeof import('../../db/routines')>();
+  return { ...actual, updateRoutineItems: vi.fn(actual.updateRoutineItems) };
+});
 
 beforeEach(async () => {
   await resetDbForTests();
@@ -187,6 +200,29 @@ it('clears a prescription field when it is emptied', async () => {
   await waitFor(async () => {
     expect((await getRoutine(routine.id))?.items[0].targetSets).toBeUndefined();
   });
+});
+
+it('keeps the typed prescription when the write fails, so the user can retry it', async () => {
+  // The same defect already fixed in ActiveSessionScreen.confirmSet: run()
+  // swallows the rejection to surface it as an alert instead of throwing, so
+  // clearing the draft around the await wipes the number the user just typed
+  // and snaps the field back to the stored one — at the exact moment they
+  // need to retry rather than retype.
+  const user = userEvent.setup();
+  const ex = await seedExercise('Barbell Bench Press');
+  const routine = await createRoutine('Push A');
+  await setRoutineItems(routine.id, [{ id: 'i1', exerciseId: ex.id, order: 0 }]);
+  vi.mocked(updateRoutineItems).mockRejectedValueOnce(new Error('quota exceeded'));
+
+  renderAt(routine.id);
+
+  const sets = await screen.findByLabelText(/^sets for barbell bench press/i);
+  await user.type(sets, '4');
+  await user.tab();
+
+  expect(await screen.findByRole('alert')).toHaveTextContent(/quota exceeded/i);
+  expect(sets).toHaveValue(4);
+  expect((await getRoutine(routine.id))?.items[0].targetSets).toBeUndefined();
 });
 
 it('marks an archived exercise so it is not mistaken for an active one', async () => {
