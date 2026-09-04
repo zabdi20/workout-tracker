@@ -154,6 +154,7 @@ export function ActiveSessionScreen() {
       }
     }
 
+    let logged = false;
     await run(async () => {
       await logSet({
         sessionId: session.id,
@@ -162,17 +163,28 @@ export function ActiveSessionScreen() {
         unit: row.unit,
         ...values,
       });
+      logged = true;
     });
 
-    setDrafts((d) => {
-      const next = { ...d };
-      for (const field of fields) delete next[draftKey(row.position, field.property)];
-      return next;
-    });
-    setWarmup((w) => {
-      const { [key]: _cleared, ...rest } = w;
-      return rest;
-    });
+    // Gated on the local flag, not run unconditionally: run() swallows a
+    // rejection so it can render the message instead of throwing, which
+    // means the code after it runs on both outcomes. Clearing here
+    // regardless would wipe the weight and reps the user just typed the
+    // moment a write fails — exactly when they need to retry, not retype.
+    if (logged) {
+      setDrafts((d) => {
+        const next = { ...d };
+        for (const field of fields) delete next[draftKey(row.position, field.property)];
+        return next;
+      });
+      setWarmup((w) => {
+        const { [key]: _cleared, ...rest } = w;
+        return rest;
+      });
+    }
+    // Clears on both outcomes: only gating this too would leave a failed
+    // row's confirm button disabled forever, trading a recoverable error
+    // for a screen the user cannot do anything with.
     setBusy(null);
   };
 

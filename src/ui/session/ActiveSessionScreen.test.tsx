@@ -8,6 +8,17 @@ import { startSession } from '../../db/sessions';
 import { listSetsForSession, logSet } from '../../db/sets';
 import { ActiveSessionScreen } from './ActiveSessionScreen';
 
+// Only logSet is overridden, and only for the one test that needs it to
+// reject — every other test (including the ones that call logSet directly
+// to seed a previous session) still hits the real, reset IndexedDB via
+// importOriginal. vi.fn(actual.logSet) calls through by default, so
+// mockRejectedValueOnce affects exactly one call and every other invocation
+// is indistinguishable from the unmocked function.
+vi.mock('../../db/sets', async (importOriginal) => {
+  const actual = await importOriginal<typeof import('../../db/sets')>();
+  return { ...actual, logSet: vi.fn(actual.logSet) };
+});
+
 beforeEach(async () => {
   await resetDbForTests();
 });
@@ -268,4 +279,31 @@ it('renders only the fields a duration exercise needs', async () => {
   expect(await screen.findByLabelText(/seconds for set 1/i)).toBeInTheDocument();
   expect(screen.queryByLabelText(/weight for set 1/i)).toBeNull();
   expect(screen.queryByLabelText(/reps for set 1/i)).toBeNull();
+});
+
+it('keeps what was typed when the write fails, so the user can retry it', async () => {
+  // A rejected logSet must not cost the user their input. run() swallows
+  // the rejection to surface it as an alert instead of throwing, and a
+  // quota-exceeded write or an unavailable IndexedDB happens exactly when
+  // retyping the set is the last thing someone mid-workout wants to do.
+  const user = userEvent.setup();
+  const { routine } = await benchRoutine('Push A', 2);
+  const session = await startSession(routine);
+  vi.mocked(logSet).mockRejectedValueOnce(new Error('quota exceeded'));
+
+  renderScreen();
+
+  const weightInput = await screen.findByLabelText(/weight for set 1/i);
+  const repsInput = screen.getByLabelText(/reps for set 1/i);
+  await user.type(weightInput, '135');
+  await user.type(repsInput, '8');
+  await user.click(screen.getByRole('button', { name: /log set 1/i }));
+
+  expect(await screen.findByRole('alert')).toHaveTextContent(/quota exceeded/i);
+  expect(weightInput).toHaveValue(135);
+  expect(repsInput).toHaveValue(8);
+  // The busy guard still clears on failure: the row must stay retryable,
+  // not lock the confirm button because its one attempt failed.
+  expect(screen.getByRole('button', { name: /log set 1/i })).toBeEnabled();
+  expect(await listSetsForSession(session.id)).toHaveLength(0);
 });
