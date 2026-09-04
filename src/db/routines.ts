@@ -47,6 +47,32 @@ export async function setRoutineItems(
 }
 
 /**
+ * Read-modify-write of a routine's items, inside one transaction.
+ *
+ * Prefer this over setRoutineItems from UI handlers. A handler that computes
+ * the next array from one captured at render works from stale input the
+ * moment a second tap lands before the first write completes, silently
+ * discarding the earlier change — the deferred Plan 2 finding. Passing a
+ * mutator instead means the array is always read fresh.
+ *
+ * setRoutineItems remains for callers that genuinely mean "these exact
+ * items", chiefly test fixtures.
+ */
+export async function updateRoutineItems(
+  id: string,
+  mutate: (items: RoutineItem[]) => RoutineItem[],
+): Promise<void> {
+  await db.transaction('rw', db.routines, async () => {
+    const routine = await db.routines.get(id);
+    if (!routine) throw new Error('Routine not found');
+    await db.routines.update(id, {
+      items: mutate(routine.items),
+      updatedAt: Date.now(),
+    });
+  });
+}
+
+/**
  * Archives rather than deletes. A hard delete would orphan every Session
  * whose routineId points here.
  *

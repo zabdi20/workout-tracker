@@ -1,7 +1,7 @@
 import { db, resetDbForTests } from './db';
 import {
   listRoutines, getRoutine, createRoutine, renameRoutine,
-  setRoutineItems, archiveRoutine, unarchiveRoutine,
+  setRoutineItems, archiveRoutine, unarchiveRoutine, updateRoutineItems,
 } from './routines';
 import { getOrCreateActiveCycle, saveCycle } from './cycles';
 import type { RoutineItem } from './types';
@@ -91,6 +91,49 @@ describe('setRoutineItems', () => {
     const updated = await getRoutine(r.id);
     expect(updated?.items).toEqual(items);
     expect(updated?.updatedAt).toBeGreaterThanOrEqual(r.updatedAt);
+  });
+});
+
+describe('updateRoutineItems', () => {
+  it('applies the mutator to the stored items', async () => {
+    const routine = await createRoutine('Push A');
+    await setRoutineItems(routine.id, [{ id: 'a', exerciseId: 'bench', order: 0 }]);
+
+    await updateRoutineItems(routine.id, (items) =>
+      items.map((i) => ({ ...i, targetSets: 4 })),
+    );
+
+    expect((await getRoutine(routine.id))?.items[0].targetSets).toBe(4);
+  });
+
+  it('bumps updatedAt', async () => {
+    const routine = await createRoutine('Push A');
+    const before = (await getRoutine(routine.id))!.updatedAt;
+
+    await new Promise((r) => setTimeout(r, 2));
+    await updateRoutineItems(routine.id, (items) => items);
+
+    expect((await getRoutine(routine.id))!.updatedAt).toBeGreaterThan(before);
+  });
+
+  it('reads fresh items rather than trusting a stale caller array', async () => {
+    // The Plan 2 finding: two fast taps recompute from an array captured at
+    // render, so the second silently discards the first. Reading inside the
+    // transaction makes both land.
+    const routine = await createRoutine('Push A');
+    await setRoutineItems(routine.id, [
+      { id: 'a', exerciseId: 'bench', order: 0 },
+      { id: 'b', exerciseId: 'row', order: 1 },
+    ]);
+
+    await updateRoutineItems(routine.id, (items) => items.filter((i) => i.id === 'a'));
+    await updateRoutineItems(routine.id, (items) => items.filter((i) => i.id !== 'a'));
+
+    expect((await getRoutine(routine.id))?.items).toEqual([]);
+  });
+
+  it('rejects an unknown routine', async () => {
+    await expect(updateRoutineItems('nope', (items) => items)).rejects.toThrow(/not found/i);
   });
 });
 
