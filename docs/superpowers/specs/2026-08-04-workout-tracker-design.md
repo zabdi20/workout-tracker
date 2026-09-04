@@ -372,7 +372,9 @@ basement, the exact environment where it must work.
 - Custom exercises, identical in shape to bundled ones
 - Routine create / edit / reorder
 - Per-item prescription on routines: target sets, rep range and rest (Plan 3)
-- Program template import, creating routines plus any missing custom exercises (Plan 3)
+- Program template import, creating routines plus any missing custom exercises — folded
+  into the backup plan, which already owes a transactional, version-gated import. See
+  `2026-09-03-active-session-design.md`.
 - Cycle rotation and Today screen
 - Active session logging across all six measurement types, with last-time reference
 - Rest timer, timestamp-based, with Screen Wake Lock and re-acquisition on
