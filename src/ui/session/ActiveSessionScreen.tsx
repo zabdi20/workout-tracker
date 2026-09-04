@@ -132,7 +132,12 @@ export function ActiveSessionScreen() {
     return derived === undefined ? '' : String(derived);
   }
 
-  async function confirmSet(row: (typeof planned)[number]) {
+  // An arrow function assigned to a const, not a function declaration: only
+  // that form keeps TypeScript's narrowing of `exercise` (guarded above) in
+  // scope here. A `function confirmSet(...)` declaration is hoisted and
+  // loses the narrowing, since the checker can't rule out it being called
+  // from somewhere before the guard ran.
+  const confirmSet = async (row: (typeof planned)[number]) => {
     const key = `${focused}:${row.position}`;
     if (busy === key) return;
     setBusy(key);
@@ -169,7 +174,7 @@ export function ActiveSessionScreen() {
       return rest;
     });
     setBusy(null);
-  }
+  };
 
   return (
     <section>
