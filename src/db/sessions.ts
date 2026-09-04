@@ -65,3 +65,50 @@ export async function startSession(routine: Routine): Promise<Session> {
     return session;
   });
 }
+
+/**
+ * Marks the session complete and advances the rotation, in one transaction.
+ *
+ * The two must not be separable: a failure between them leaves a completed
+ * session sitting behind a stale rotation pointer, and the user would train
+ * the same routine twice without the app noticing.
+ *
+ * A routine archived mid-session needs no special case. archiveRoutine
+ * strips it from every cycle, and advanceAfter returns the cycle unchanged
+ * when indexOf is -1.
+ */
+export async function finishSession(id: string): Promise<void> {
+  await db.transaction('rw', db.sessions, db.cycles, async () => {
+    const session = await db.sessions.get(id);
+    if (!session) throw new Error('Session not found');
+
+    await db.sessions.update(id, { endedAt: Date.now(), status: 'completed' });
+
+    // Freestyle sessions have no routine to advance past. No UI creates one
+    // yet, but the schema permits it and this is the natural place to be
+    // correct about it.
+    if (session.routineId === null) return;
+
+    const cycles = await db.cycles.toArray();
+    const active = cycles.find((c) => c.isActive);
+    if (!active) return;
+
+    await db.cycles.put(advanceAfter(active, session.routineId));
+  });
+}
+
+/**
+ * Deletes the session and its sets.
+ *
+ * A real hard delete, and a correct one. The never-hard-delete rule protects
+ * rows that other rows reference; nothing references a Session except the
+ * LoggedSets that go with it, and both are removed here in one transaction.
+ * An 'abandoned' status was considered and rejected — it buys nothing and
+ * would make History filter for it forever.
+ */
+export async function discardSession(id: string): Promise<void> {
+  await db.transaction('rw', db.sessions, db.sets, async () => {
+    await db.sets.where('sessionId').equals(id).delete();
+    await db.sessions.delete(id);
+  });
+}
