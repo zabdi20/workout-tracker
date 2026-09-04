@@ -195,7 +195,7 @@ export function ActiveSessionScreen() {
       <section>
         <h2>{session.name}</h2>
         {error && <p role="alert">{error}</p>}
-        <p role="alert">That exercise is no longer in the library.</p>
+        <p>That exercise is no longer in the library.</p>
         {sessionControls}
       </section>
     );

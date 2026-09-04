@@ -2,6 +2,7 @@
 import { copyFileSync } from 'node:fs';
 import { resolve } from 'node:path';
 import { defineConfig, type Plugin } from 'vite';
+import { configDefaults } from 'vitest/config';
 import react from '@vitejs/plugin-react';
 import { VitePWA } from 'vite-plugin-pwa';
 
@@ -72,5 +73,9 @@ export default defineConfig({
     globals: true,
     environment: 'jsdom',
     setupFiles: ['./src/test-setup.ts'],
+    // A git worktree under .claude/ holds a full copy of src/, so without
+    // this every test file is collected twice and the suite reports double
+    // its real count — which reads as good news while hiding a failure.
+    exclude: [...configDefaults.exclude, '**/.claude/**'],
   },
 });

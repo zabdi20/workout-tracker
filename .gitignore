@@ -6,3 +6,6 @@ coverage
 *.local
 .DS_Store
 .vite
+# Worktrees created by the agent harness. An unignored worktree directory
+# lets `git add -A` commit an entire second checkout into the repo.
+.claude/worktrees
