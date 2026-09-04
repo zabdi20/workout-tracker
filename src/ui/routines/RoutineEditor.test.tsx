@@ -1,8 +1,8 @@
-import { render, screen } from '@testing-library/react';
+import { render, screen, waitFor } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
 import { MemoryRouter, Route, Routes } from 'react-router-dom';
 import { resetDbForTests } from '../../db/db';
-import { createCustomExercise } from '../../db/exercises';
+import { createCustomExercise, archiveExercise } from '../../db/exercises';
 import { createRoutine, getRoutine, setRoutineItems } from '../../db/routines';
 import { RoutineEditor } from './RoutineEditor';
 
@@ -119,4 +119,83 @@ it('tells the user when the routine has no exercises', async () => {
   const r = await createRoutine('Push Day');
   renderAt(r.id);
   expect(await screen.findByText(/no exercises yet/i)).toBeInTheDocument();
+});
+
+it('saves a prescription when the field loses focus', async () => {
+  const user = userEvent.setup();
+  const ex = await seedExercise('Barbell Bench Press');
+  const routine = await createRoutine('Push A');
+  await setRoutineItems(routine.id, [{ id: 'i1', exerciseId: ex.id, order: 0 }]);
+
+  renderAt(routine.id);
+
+  const sets = await screen.findByLabelText(/sets for barbell bench press/i);
+  await user.type(sets, '4');
+  await user.tab();
+
+  await waitFor(async () => {
+    expect((await getRoutine(routine.id))?.items[0].targetSets).toBe(4);
+  });
+});
+
+it('shows the stored prescription when the editor opens', async () => {
+  const ex = await seedExercise('Barbell Bench Press');
+  const routine = await createRoutine('Push A');
+  await setRoutineItems(routine.id, [
+    { id: 'i1', exerciseId: ex.id, order: 0, targetSets: 4, targetRepMin: 6, targetRepMax: 8 },
+  ]);
+
+  renderAt(routine.id);
+
+  expect(await screen.findByLabelText(/^sets for barbell bench press/i)).toHaveValue(4);
+  expect(screen.getByLabelText(/lowest reps for barbell bench press/i)).toHaveValue(6);
+  expect(screen.getByLabelText(/highest reps for barbell bench press/i)).toHaveValue(8);
+});
+
+it('refuses a backwards rep range and does not write it', async () => {
+  const user = userEvent.setup();
+  const ex = await seedExercise('Barbell Bench Press');
+  const routine = await createRoutine('Push A');
+  await setRoutineItems(routine.id, [
+    { id: 'i1', exerciseId: ex.id, order: 0, targetRepMax: 6 },
+  ]);
+
+  renderAt(routine.id);
+
+  const min = await screen.findByLabelText(/lowest reps for barbell bench press/i);
+  await user.type(min, '8');
+  await user.tab();
+
+  expect(await screen.findByRole('alert')).toHaveTextContent(/rep range/i);
+  expect((await getRoutine(routine.id))?.items[0].targetRepMin).toBeUndefined();
+});
+
+it('clears a prescription field when it is emptied', async () => {
+  const user = userEvent.setup();
+  const ex = await seedExercise('Barbell Bench Press');
+  const routine = await createRoutine('Push A');
+  await setRoutineItems(routine.id, [
+    { id: 'i1', exerciseId: ex.id, order: 0, targetSets: 4 },
+  ]);
+
+  renderAt(routine.id);
+
+  const sets = await screen.findByLabelText(/^sets for barbell bench press/i);
+  await user.clear(sets);
+  await user.tab();
+
+  await waitFor(async () => {
+    expect((await getRoutine(routine.id))?.items[0].targetSets).toBeUndefined();
+  });
+});
+
+it('marks an archived exercise so it is not mistaken for an active one', async () => {
+  const ex = await seedExercise('Barbell Bench Press');
+  await archiveExercise(ex.id);
+  const routine = await createRoutine('Push A');
+  await setRoutineItems(routine.id, [{ id: 'i1', exerciseId: ex.id, order: 0 }]);
+
+  renderAt(routine.id);
+
+  expect(await screen.findByText(/archived/i)).toBeInTheDocument();
 });
