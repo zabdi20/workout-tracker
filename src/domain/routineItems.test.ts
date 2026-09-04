@@ -1,4 +1,6 @@
-import { addItem, removeItem, moveItem } from './routineItems';
+import {
+  addItem, removeItem, moveItem, setItemPrescription, validatePrescription,
+} from './routineItems';
 import type { RoutineItem } from '../db/types';
 
 function items(...exerciseIds: string[]): RoutineItem[] {
@@ -93,5 +95,76 @@ describe('moveItem', () => {
     const original = items('bench', 'fly');
     moveItem(original, 'item-0', 'down');
     expect(original.map((i) => i.exerciseId)).toEqual(['bench', 'fly']);
+  });
+});
+
+describe('setItemPrescription', () => {
+  const items = [
+    { id: 'a', exerciseId: 'bench', order: 0 },
+    { id: 'b', exerciseId: 'row', order: 1 },
+  ];
+
+  it('applies the patch to the named item only', () => {
+    const next = setItemPrescription(items, 'a', { targetSets: 4 });
+    expect(next[0].targetSets).toBe(4);
+    expect(next[1].targetSets).toBeUndefined();
+  });
+
+  it('merges into an existing prescription', () => {
+    const withSets = setItemPrescription(items, 'a', { targetSets: 4 });
+    const next = setItemPrescription(withSets, 'a', { targetRepMin: 6 });
+    expect(next[0].targetSets).toBe(4);
+    expect(next[0].targetRepMin).toBe(6);
+  });
+
+  it('deletes the key when a field is cleared, rather than storing undefined', () => {
+    const withSets = setItemPrescription(items, 'a', { targetSets: 4 });
+    const next = setItemPrescription(withSets, 'a', { targetSets: undefined });
+    expect('targetSets' in next[0]).toBe(false);
+  });
+
+  it('leaves order and exerciseId untouched', () => {
+    const next = setItemPrescription(items, 'b', { restSeconds: 120 });
+    expect(next[1].order).toBe(1);
+    expect(next[1].exerciseId).toBe('row');
+  });
+
+  it('returns the list unchanged for an unknown item', () => {
+    expect(setItemPrescription(items, 'missing', { targetSets: 4 })).toEqual(items);
+  });
+});
+
+describe('validatePrescription', () => {
+  it('accepts an empty patch', () => {
+    expect(validatePrescription({})).toBeNull();
+  });
+
+  it('accepts a complete, ordered prescription', () => {
+    expect(validatePrescription({
+      targetSets: 4, targetRepMin: 6, targetRepMax: 8, restSeconds: 120,
+    })).toBeNull();
+  });
+
+  it('rejects a rep range that runs backwards', () => {
+    expect(validatePrescription({ targetRepMin: 8, targetRepMax: 6 }))
+      .toMatch(/rep range/i);
+  });
+
+  it('accepts a single-value rep range', () => {
+    expect(validatePrescription({ targetRepMin: 8, targetRepMax: 8 })).toBeNull();
+  });
+
+  it('rejects zero and negative values', () => {
+    expect(validatePrescription({ targetSets: 0 })).toMatch(/whole number/i);
+    expect(validatePrescription({ restSeconds: -30 })).toMatch(/whole number/i);
+  });
+
+  it('rejects fractional values', () => {
+    expect(validatePrescription({ targetSets: 2.5 })).toMatch(/whole number/i);
+  });
+
+  it('ignores the range check when only one end is set', () => {
+    expect(validatePrescription({ targetRepMin: 8 })).toBeNull();
+    expect(validatePrescription({ targetRepMax: 6 })).toBeNull();
   });
 });
