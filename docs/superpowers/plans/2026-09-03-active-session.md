@@ -687,7 +687,7 @@ export async function lastPerformance(
 - [ ] **Step 12: Run both db test files to verify they pass**
 
 Run: `npx vitest run src/db/sets.test.ts src/db/sessions.test.ts`
-Expected: PASS — 13 tests in `sessions.test.ts`, 11 in `sets.test.ts`.
+Expected: PASS — 13 tests in `sessions.test.ts`, 10 in `sets.test.ts`.
 
 - [ ] **Step 13: Commit**
 
@@ -762,7 +762,7 @@ describe('lastPerformance', () => {
 `lastPerformance` was written in Step 11, so these should pass immediately. That is expected and fine — the RED phase for it was Step 10, when the module did not exist.
 
 Run: `npx vitest run src/db/sets.test.ts`
-Expected: PASS — 17 tests.
+Expected: PASS — 16 tests.
 
 If any fail, the implementation is wrong, not the test. Fix `src/db/sets.ts`.
 
