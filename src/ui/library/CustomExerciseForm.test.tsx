@@ -5,6 +5,7 @@ import {
   createCustomExercise, listExercises, getExercise, updateExercise,
 } from '../../db/exercises';
 import { prepareLibrary } from '../../db/seed';
+import type { Exercise } from '../../db/types';
 import { CustomExerciseForm } from './CustomExerciseForm';
 
 beforeEach(async () => {
@@ -130,10 +131,40 @@ it('restores the shipped data when reset is pressed', async () => {
   expect(restored?.measurementType).toBe(original.measurementType);
 });
 
+it('surfaces an error and does not close the form when reset fails', async () => {
+  // resetExerciseToBundled rejects for any id absent from the bundled JSON
+  // — a real, unmocked rejection trigger. This pins the actual defect the
+  // try/catch in handleReset (and, by the same shape, handleArchive) fixed:
+  // an unhandled rejection used to leave the form open with no explanation.
+  // A passing test here requires both halves: the alert renders, and
+  // onDone is not called as though the write had succeeded.
+  const user = userEvent.setup();
+  const existing: Exercise = {
+    id: 'not-a-real-bundled-id',
+    name: 'Side to Side Box Shuffle',
+    primaryMuscles: ['quads'],
+    secondaryMuscles: [],
+    equipment: 'other',
+    measurementType: 'bodyweight_reps',
+    isCustom: false,
+    isArchived: false,
+  };
+  const onDone = vi.fn();
+
+  render(<CustomExerciseForm existing={existing} onDone={onDone} onCancel={vi.fn()} />);
+  await user.click(screen.getByRole('button', { name: /reset to bundled/i }));
+
+  expect(await screen.findByRole('alert')).toHaveTextContent(/bundled/i);
+  expect(onDone).not.toHaveBeenCalled();
+});
+
 it('waits for the archive write before closing the form', async () => {
-  // handleArchive was fire-and-forget: it called onDone without awaiting, so a
-  // rejected write closed the form as though it had succeeded. Asserting that
-  // the row is archived by the time onDone fires pins the await.
+  // Pins that handleArchive awaits archiveExercise before calling onDone,
+  // rather than closing the form as soon as the write is issued: if onDone
+  // fired before the write settled, the row would not yet be archived when
+  // this assertion runs. (Error-surfacing on a rejected write is covered
+  // separately, by the handleReset failure test above — the two handlers
+  // are verbatim the same shape.)
   const user = userEvent.setup();
   const custom = await createCustomExercise({
     name: 'Explosive Box Step-Up',
