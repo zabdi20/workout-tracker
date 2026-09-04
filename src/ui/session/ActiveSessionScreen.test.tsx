@@ -120,3 +120,152 @@ it('marks an archived exercise but still allows logging against it', async () =>
   expect(await screen.findByText(/archived/i)).toBeInTheDocument();
   expect(screen.getByRole('button', { name: /log set 1/i })).toBeEnabled();
 });
+
+it('prefills each row from last time’s matching set', async () => {
+  const { exercise, routine } = await benchRoutine('Push A', 3);
+  const previous = await startSession(routine);
+  await logSet({
+    sessionId: previous.id, exerciseId: exercise.id, setType: 'working',
+    unit: 'lb', weight: 135, reps: 8,
+  });
+  await logSet({
+    sessionId: previous.id, exerciseId: exercise.id, setType: 'working',
+    unit: 'lb', weight: 145, reps: 6,
+  });
+  await (await import('../../db/sessions')).finishSession(previous.id);
+  await startSession(routine);
+
+  renderScreen();
+
+  expect(await screen.findByLabelText(/weight for set 1/i)).toHaveValue(135);
+  expect(screen.getByLabelText(/weight for set 2/i)).toHaveValue(145);
+  // Row 3 has no matching set, so it falls back to last time's final set.
+  expect(screen.getByLabelText(/weight for set 3/i)).toHaveValue(145);
+});
+
+it('shows the last-time line', async () => {
+  const { exercise, routine } = await benchRoutine();
+  const previous = await startSession(routine);
+  await logSet({
+    sessionId: previous.id, exerciseId: exercise.id, setType: 'working',
+    unit: 'lb', weight: 135, reps: 8,
+  });
+  await (await import('../../db/sessions')).finishSession(previous.id);
+  await startSession(routine);
+
+  renderScreen();
+
+  expect(await screen.findByText(/last time: 135 lb × 8/i)).toBeInTheDocument();
+});
+
+it('writes a set when the row is confirmed', async () => {
+  const user = userEvent.setup();
+  const { routine } = await benchRoutine('Push A', 2);
+  const session = await startSession(routine);
+
+  renderScreen();
+
+  await user.type(await screen.findByLabelText(/weight for set 1/i), '135');
+  await user.type(screen.getByLabelText(/reps for set 1/i), '8');
+  await user.click(screen.getByRole('button', { name: /log set 1/i }));
+
+  await waitFor(async () => {
+    const stored = await listSetsForSession(session.id);
+    expect(stored).toHaveLength(1);
+    expect(stored[0].weight).toBe(135);
+    expect(stored[0].reps).toBe(8);
+    expect(stored[0].setType).toBe('working');
+  });
+});
+
+it('keeps logged sets and resumes the remaining rows after a remount', async () => {
+  // The test that encodes the whole autosave decision. Safari killing the
+  // tab must lose nothing that was actually performed, and the unconfirmed
+  // rows must re-derive rather than being replayed from anywhere.
+  const user = userEvent.setup();
+  const { routine } = await benchRoutine('Push A', 3);
+  await startSession(routine);
+
+  const first = renderScreen();
+  await user.type(await screen.findByLabelText(/weight for set 1/i), '135');
+  await user.type(screen.getByLabelText(/reps for set 1/i), '8');
+  await user.click(screen.getByRole('button', { name: /log set 1/i }));
+  await screen.findByText(/1\. 135 lb × 8/);
+  first.unmount();
+
+  renderScreen();
+
+  expect(await screen.findByText(/1\. 135 lb × 8/)).toBeInTheDocument();
+  expect(screen.getByRole('button', { name: /log set 2/i })).toBeInTheDocument();
+  expect(screen.queryByRole('button', { name: /log set 1/i })).toBeNull();
+});
+
+it('flags a warm-up and keeps it out of the working count', async () => {
+  const user = userEvent.setup();
+  const { routine } = await benchRoutine('Push A', 2);
+  const session = await startSession(routine);
+
+  renderScreen();
+
+  await user.type(await screen.findByLabelText(/weight for set 1/i), '45');
+  await user.type(screen.getByLabelText(/reps for set 1/i), '10');
+  await user.click(screen.getByLabelText(/mark set 1 as a warm-up/i));
+  await user.click(screen.getByRole('button', { name: /log set 1/i }));
+
+  await waitFor(async () => {
+    expect((await listSetsForSession(session.id))[0].setType).toBe('warmup');
+  });
+  // A warm-up does not consume a planned row: set 1 is still to do.
+  expect(await screen.findByRole('button', { name: /log set 1/i })).toBeInTheDocument();
+});
+
+it('adds and removes planned rows mid-workout', async () => {
+  const user = userEvent.setup();
+  const { routine } = await benchRoutine('Push A', 2);
+  await startSession(routine);
+
+  renderScreen();
+
+  await user.click(await screen.findByRole('button', { name: /^add set$/i }));
+  expect(await screen.findByRole('button', { name: /log set 3/i })).toBeInTheDocument();
+
+  await user.click(screen.getByLabelText(/remove planned set 3/i));
+  expect(screen.queryByRole('button', { name: /log set 3/i })).toBeNull();
+});
+
+it('removes a logged set', async () => {
+  const user = userEvent.setup();
+  const { exercise, routine } = await benchRoutine('Push A', 2);
+  const session = await startSession(routine);
+  await logSet({
+    sessionId: session.id, exerciseId: exercise.id, setType: 'working',
+    unit: 'lb', weight: 135, reps: 8,
+  });
+
+  renderScreen();
+
+  await user.click(await screen.findByLabelText(/remove logged set 1/i));
+
+  await waitFor(async () => {
+    expect(await listSetsForSession(session.id)).toHaveLength(0);
+  });
+});
+
+it('renders only the fields a duration exercise needs', async () => {
+  const plank = await createCustomExercise({
+    name: 'Plank',
+    primaryMuscles: ['abs'],
+    secondaryMuscles: [],
+    equipment: 'bodyweight',
+    measurementType: 'duration',
+  });
+  const routine = await createRoutine('Core');
+  await setRoutineItems(routine.id, [{ id: 'i1', exerciseId: plank.id, order: 0 }]);
+  await startSession(routine);
+
+  renderScreen();
+
+  expect(await screen.findByLabelText(/seconds for set 1/i)).toBeInTheDocument();
+  expect(screen.queryByLabelText(/weight for set 1/i)).toBeNull();
+  expect(screen.queryByLabelText(/reps for set 1/i)).toBeNull();
+});
