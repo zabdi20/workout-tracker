@@ -1,7 +1,7 @@
 import { useState } from 'react';
-import { Navigate } from 'react-router-dom';
+import { Navigate, useNavigate } from 'react-router-dom';
 import { useLiveQuery } from 'dexie-react-hooks';
-import { getInProgressSession } from '../../db/sessions';
+import { discardSession, finishSession, getInProgressSession } from '../../db/sessions';
 import { getRoutine } from '../../db/routines';
 import { listExercises } from '../../db/exercises';
 import { getSettings } from '../../db/settings';
@@ -9,10 +9,12 @@ import { deleteSet, lastPerformance, listSetsForSession, logSet } from '../../db
 import { useWriteError } from '../useWriteError';
 import { formatDuration, formatSet, measurementFields } from '../../domain/measurement';
 import { planSets } from '../../domain/setPlan';
+import { ExerciseBrowser } from '../library/ExerciseBrowser';
 import type { LoggedSet, RoutineItem } from '../../db/types';
 
 export function ActiveSessionScreen() {
   const { error, run } = useWriteError();
+  const navigate = useNavigate();
 
   // Identity-based, not positional: the exercise list grows when one is added
   // mid-session, and an index would silently point at a different movement.
@@ -27,6 +29,14 @@ export function ActiveSessionScreen() {
   const [drafts, setDrafts] = useState<Record<string, string>>({});
   const [warmup, setWarmup] = useState<Record<string, boolean>>({});
   const [busy, setBusy] = useState<string | null>(null);
+  const [picking, setPicking] = useState(false);
+  const [confirmingDiscard, setConfirmingDiscard] = useState(false);
+  // Exercises added this session that have no logged set yet. Held here
+  // rather than stored: the session's exercise list is derived from the
+  // routine plus whatever has sets, so adding one writes nothing. The
+  // consequence is that an added exercise with no sets is gone after a
+  // reload — nothing was lost, because nothing was done.
+  const [added, setAdded] = useState<string[]>([]);
 
   // One querier rather than several chained ones: splitting the session read
   // from the routine read would make the second lag a render behind the
@@ -78,9 +88,9 @@ export function ActiveSessionScreen() {
     .slice()
     .sort((a, b) => a.order - b.order)
     .map((i) => i.exerciseId);
-  const extraIds = [...new Set(sets.map((s) => s.exerciseId))].filter(
-    (id) => !routineIds.includes(id),
-  );
+  const extraIds = [
+    ...new Set([...sets.map((s) => s.exerciseId), ...added]),
+  ].filter((id) => !routineIds.includes(id));
   const exerciseIds = [...routineIds, ...extraIds];
 
   const focused = focusedId && exerciseIds.includes(focusedId) ? focusedId : exerciseIds[0];
@@ -202,6 +212,27 @@ export function ActiveSessionScreen() {
     // for a screen the user cannot do anything with.
     setBusy(null);
   };
+
+  async function finish() {
+    let done = false;
+    await run(async () => {
+      await finishSession(session.id);
+      done = true;
+    });
+    // Gated on the local flag, not run unconditionally: a failed finish must
+    // leave the user on this screen with their session still open, not send
+    // them to Today believing it completed.
+    if (done) navigate('/');
+  }
+
+  async function discard() {
+    let done = false;
+    await run(async () => {
+      await discardSession(session.id);
+      done = true;
+    });
+    if (done) navigate('/');
+  }
 
   return (
     <section>
@@ -333,6 +364,36 @@ export function ActiveSessionScreen() {
       >
         Add set
       </button>
+
+      <button type="button" onClick={() => setPicking((p) => !p)}>
+        {picking ? 'Done adding' : 'Add exercise'}
+      </button>
+
+      {picking && (
+        <ExerciseBrowser
+          onSelect={(chosen) => {
+            setAdded((a) => (a.includes(chosen.id) ? a : [...a, chosen.id]));
+            setFocusedId(chosen.id);
+            setPicking(false);
+          }}
+        />
+      )}
+
+      <button type="button" onClick={() => void finish()}>
+        Finish workout
+      </button>
+
+      {confirmingDiscard ? (
+        <p>
+          Discard this workout and everything logged in it?
+          <button type="button" onClick={() => void discard()}>Yes, discard it</button>
+          <button type="button" onClick={() => setConfirmingDiscard(false)}>Keep it</button>
+        </p>
+      ) : (
+        <button type="button" onClick={() => setConfirmingDiscard(true)}>
+          Discard workout
+        </button>
+      )}
     </section>
   );
 }

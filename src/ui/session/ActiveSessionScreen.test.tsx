@@ -353,3 +353,105 @@ it('keeps what was typed when the write fails, so the user can retry it', async 
   expect(screen.getByRole('button', { name: /log set 1/i })).toBeEnabled();
   expect(await listSetsForSession(session.id)).toHaveLength(0);
 });
+
+it('adds an exercise that is not in the routine', async () => {
+  const user = userEvent.setup();
+  const { routine } = await benchRoutine('Push A', 1);
+  await createCustomExercise({
+    name: 'Cable Fly',
+    primaryMuscles: ['chest'],
+    secondaryMuscles: [],
+    equipment: 'cable',
+    measurementType: 'weight_reps',
+  });
+  await startSession(routine);
+
+  renderScreen();
+
+  await user.click(await screen.findByRole('button', { name: /add exercise/i }));
+  await user.click(await screen.findByRole('button', { name: /cable fly/i }));
+
+  expect(
+    await screen.findByRole('heading', { level: 3, name: /cable fly/i }),
+  ).toBeInTheDocument();
+  expect(screen.getByRole('button', { name: /log set 1/i })).toBeInTheDocument();
+});
+
+it('keeps an added exercise after a set is logged into it', async () => {
+  const { routine } = await benchRoutine('Push A', 1);
+  const fly = await createCustomExercise({
+    name: 'Cable Fly',
+    primaryMuscles: ['chest'],
+    secondaryMuscles: [],
+    equipment: 'cable',
+    measurementType: 'weight_reps',
+  });
+  const session = await startSession(routine);
+  await logSet({
+    sessionId: session.id, exerciseId: fly.id, setType: 'working',
+    unit: 'lb', weight: 30, reps: 12,
+  });
+
+  renderScreen();
+
+  // Derived from the logged sets, so it survives a reload with no storage.
+  expect(await screen.findByRole('button', { name: /cable fly/i })).toBeInTheDocument();
+});
+
+it('finishes the session and advances the rotation', async () => {
+  const user = userEvent.setup();
+  const { routine } = await benchRoutine('Push A', 1);
+  const other = await createRoutine('Pull A');
+  const cycle = await (await import('../../db/cycles')).getOrCreateActiveCycle();
+  await (await import('../../db/cycles')).saveCycle({
+    ...cycle, routineIds: [routine.id, other.id], currentIndex: 0,
+  });
+  const session = await startSession(routine);
+
+  renderScreen();
+
+  await user.click(await screen.findByRole('button', { name: /finish workout/i }));
+
+  expect(await screen.findByText('Today screen')).toBeInTheDocument();
+  const { getSession } = await import('../../db/sessions');
+  expect((await getSession(session.id))?.status).toBe('completed');
+  const { getActiveCycle } = await import('../../db/cycles');
+  expect((await getActiveCycle())?.currentIndex).toBe(1);
+});
+
+it('asks before discarding', async () => {
+  const user = userEvent.setup();
+  const { routine } = await benchRoutine('Push A', 1);
+  const session = await startSession(routine);
+
+  renderScreen();
+
+  await user.click(await screen.findByRole('button', { name: /discard workout/i }));
+  // Nothing is gone until the confirmation is taken.
+  const { getSession } = await import('../../db/sessions');
+  expect(await getSession(session.id)).toBeDefined();
+
+  await user.click(await screen.findByRole('button', { name: /yes, discard it/i }));
+
+  expect(await screen.findByText('Today screen')).toBeInTheDocument();
+  expect(await getSession(session.id)).toBeUndefined();
+});
+
+it('takes the logged sets with a discarded session', async () => {
+  const user = userEvent.setup();
+  const { exercise, routine } = await benchRoutine('Push A', 1);
+  const session = await startSession(routine);
+  await logSet({
+    sessionId: session.id, exerciseId: exercise.id, setType: 'working',
+    unit: 'lb', weight: 135, reps: 8,
+  });
+
+  renderScreen();
+
+  await user.click(await screen.findByRole('button', { name: /discard workout/i }));
+  await user.click(await screen.findByRole('button', { name: /yes, discard it/i }));
+
+  await waitFor(async () => {
+    expect(await listSetsForSession(session.id)).toHaveLength(0);
+  });
+});
