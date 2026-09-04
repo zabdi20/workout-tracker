@@ -193,6 +193,11 @@ it('keeps logged sets and resumes the remaining rows after a remount', async () 
   // The test that encodes the whole autosave decision. Safari killing the
   // tab must lose nothing that was actually performed, and the unconfirmed
   // rows must re-derive rather than being replayed from anywhere.
+  //
+  // Two sets, not one: with one, resuming at "set 2" is also what a plan
+  // that ignored doneCount entirely would produce. The arithmetic that can
+  // actually be wrong — planSets' doneCount, listSetsForSession's ordering
+  // and the index + 1 display numbering — only shows itself past the first.
   const user = userEvent.setup();
   const { routine } = await benchRoutine('Push A', 3);
   await startSession(routine);
@@ -202,13 +207,20 @@ it('keeps logged sets and resumes the remaining rows after a remount', async () 
   await user.type(screen.getByLabelText(/reps for set 1/i), '8');
   await user.click(screen.getByRole('button', { name: /log set 1/i }));
   await screen.findByText(/1\. 135 lb × 8/);
+
+  await user.type(await screen.findByLabelText(/weight for set 2/i), '145');
+  await user.type(screen.getByLabelText(/reps for set 2/i), '6');
+  await user.click(screen.getByRole('button', { name: /log set 2/i }));
+  await screen.findByText(/2\. 145 lb × 6/);
   first.unmount();
 
   renderScreen();
 
   expect(await screen.findByText(/1\. 135 lb × 8/)).toBeInTheDocument();
-  expect(screen.getByRole('button', { name: /log set 2/i })).toBeInTheDocument();
+  expect(screen.getByText(/2\. 145 lb × 6/)).toBeInTheDocument();
+  expect(screen.getByRole('button', { name: /log set 3/i })).toBeInTheDocument();
   expect(screen.queryByRole('button', { name: /log set 1/i })).toBeNull();
+  expect(screen.queryByRole('button', { name: /log set 2/i })).toBeNull();
 });
 
 it('flags a warm-up and keeps it out of the working count', async () => {
