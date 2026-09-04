@@ -83,6 +83,12 @@ export async function deleteSet(id: string): Promise<void> {
  * are contiguous in completedAt order. Editing a past session in Plan 5
  * breaks that assumption, and the symptom would be a silently truncated
  * last-time line that nobody connects back to the edit.
+ *
+ * Sets from different sessions that share a completedAt millisecond make
+ * which session wins arbitrary: [exerciseId+completedAt] then ties on
+ * primary key, which is a random UUID. Unreachable in real use, where sets
+ * are minutes apart, and there is no natural tiebreak to add — a test that
+ * seeds several sessions in one go must stamp completedAt itself.
  */
 export async function lastPerformance(
   exerciseId: string,

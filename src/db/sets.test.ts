@@ -120,10 +120,23 @@ describe('lastPerformance', () => {
   });
 
   it('returns the previous session’s sets for that exercise, ordered', async () => {
-    await logSet(bench('older', 125, 8));
-    await logSet(bench('previous', 135, 8));
-    await logSet(bench('previous', 145, 6));
-    await logSet(bench('current', 155, 5));
+    const older = await logSet(bench('older', 125, 8));
+    const first = await logSet(bench('previous', 135, 8));
+    const second = await logSet(bench('previous', 145, 6));
+    const current = await logSet(bench('current', 155, 5));
+
+    // Stamped explicitly, the same way the non-contiguous test below does.
+    // logSet uses Date.now(), so four writes can land in the same
+    // millisecond; [exerciseId+completedAt] then ties on primary key and the
+    // reverse walk picks whichever session happens to own the highest UUID —
+    // a one-in-three chance of answering with the `older` session. Real sets
+    // are minutes apart, so the fixture is what should be pinned down, not
+    // logSet or the index: there is no natural tiebreak at the schema level.
+    const base = Date.now();
+    await db.sets.update(older.id, { completedAt: base });
+    await db.sets.update(first.id, { completedAt: base + 1 });
+    await db.sets.update(second.id, { completedAt: base + 2 });
+    await db.sets.update(current.id, { completedAt: base + 3 });
 
     const last = await lastPerformance('bench', 'current');
 
