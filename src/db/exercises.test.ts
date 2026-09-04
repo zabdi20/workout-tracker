@@ -1,8 +1,11 @@
 import { db, resetDbForTests } from './db';
 import {
   listExercises, getExercise, createCustomExercise,
-  updateExercise, archiveExercise, unarchiveExercise,
+  updateExercise, archiveExercise, unarchiveExercise, resetExerciseToBundled,
 } from './exercises';
+import bundled from '../data/exercises.json';
+import type { Exercise } from './types';
+import { prepareLibrary } from './seed';
 
 beforeEach(async () => {
   await resetDbForTests();
@@ -209,5 +212,54 @@ describe('updateExercise', () => {
     expect(updated?.equipment).toBe('machine');
     expect(updated?.name).toBe('Cable Fly');
     expect(updated?.primaryMuscles).toEqual(['chest']);
+  });
+});
+
+describe('resetExerciseToBundled', () => {
+  const original = (bundled as Exercise[])[0];
+
+  beforeEach(async () => {
+    await prepareLibrary();
+  });
+
+  it('restores every field the user changed', async () => {
+    await updateExercise(original.id, {
+      name: 'Renamed',
+      measurementType: 'duration',
+      equipment: 'other',
+    });
+
+    await resetExerciseToBundled(original.id);
+
+    const restored = await getExercise(original.id);
+    expect(restored?.name).toBe(original.name);
+    expect(restored?.measurementType).toBe(original.measurementType);
+    expect(restored?.equipment).toBe(original.equipment);
+    expect(restored?.primaryMuscles).toEqual(original.primaryMuscles);
+  });
+
+  it('keeps the row bundled', async () => {
+    await resetExerciseToBundled(original.id);
+    expect((await getExercise(original.id))?.isCustom).toBe(false);
+  });
+
+  it('does not un-archive a reset exercise', async () => {
+    // Resetting restores the exercise's data, not the user's decision to
+    // hide it. Un-archiving is a separate, explicit action.
+    await archiveExercise(original.id);
+    await resetExerciseToBundled(original.id);
+    expect((await getExercise(original.id))?.isArchived).toBe(true);
+  });
+
+  it('refuses an exercise that is not part of the bundled library', async () => {
+    const custom = await createCustomExercise({
+      name: 'Explosive Box Step-Up',
+      primaryMuscles: ['quads'],
+      secondaryMuscles: [],
+      equipment: 'bodyweight',
+      measurementType: 'bodyweight_reps',
+    });
+
+    await expect(resetExerciseToBundled(custom.id)).rejects.toThrow(/bundled/i);
   });
 });
