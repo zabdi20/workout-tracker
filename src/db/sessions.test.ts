@@ -1,8 +1,7 @@
 import { db, resetDbForTests } from './db';
-import { createRoutine } from './routines';
+import { archiveRoutine, createRoutine } from './routines';
 import { discardSession, finishSession, getInProgressSession, getSession, startSession } from './sessions';
 import { getOrCreateActiveCycle, saveCycle, getActiveCycle } from './cycles';
-import { archiveRoutine } from './routines';
 import { logSet } from './sets';
 
 beforeEach(async () => {

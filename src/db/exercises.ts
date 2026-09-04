@@ -59,11 +59,14 @@ export async function updateExercise(
   // Dexie turns an `id` inside `changes` into delete-then-add under the new
   // key. That is a real hard delete, and it would orphan every LoggedSet
   // referencing the old id — exactly what archiving exists to prevent.
-  // isCustom is stripped for a different reason: a bundled row claiming to
-  // be custom would mislabel itself in the library list and in the filters.
-  // (An earlier version of this comment blamed a seed gate that counted
-  // non-custom rows. prepareLibrary replaced it and is keyed on ids, so that
-  // gate no longer exists — the strip is still right, the reason was stale.)
+  // isCustom is stripped for a different reason: ExerciseList appends
+  // "· Custom" to any row carrying it, so a bundled row claiming to be
+  // custom would mislabel itself there. That list is the only reader —
+  // exerciseFilter matches on name, muscles and equipment, never on
+  // isCustom. (Two earlier versions of this comment were wrong: one blamed
+  // a seed gate that prepareLibrary had already replaced, the next added
+  // filters that never consulted the flag. The strip has been right
+  // throughout; only the reason kept drifting.)
   const { id: _discardedId, isCustom: _discardedIsCustom, ...safe } = changes;
   await db.exercises.update(id, safe);
 }

@@ -69,10 +69,11 @@ export function CustomExerciseForm({ existing, onDone, onCancel }: Props) {
     }
   }
 
-  // No try/catch: a rejection threw an unhandled promise rejection and left
-  // the form open with no explanation. This form already owns an `error`
-  // state (used by handleSubmit), so both writes below reuse it rather than
-  // introducing a second error surface inside one component.
+  // Both writes below used to have no try/catch: a rejection became an
+  // unhandled promise rejection and left the form open with no explanation.
+  // This form already owned an `error` state (used by handleSubmit), so
+  // they reuse it rather than introducing a second error surface inside one
+  // component.
   async function handleArchive() {
     if (!existing) return;
     setError(null);

@@ -57,11 +57,14 @@ export function planSets(input: PlanSetsInput): PlannedSet[] {
   const prescribed =
     targetSets !== undefined && targetSets > 0 ? targetSets : lastWorking.length || 1;
 
-  // Clamped at doneCount, never below: removing rows must not hide a set
-  // that was actually performed.
   const total = Math.max(doneCount, prescribed + adjust);
 
   const rows: PlannedSet[] = [];
+  // Removing rows must not hide a set that was actually performed, and this
+  // start is what guarantees it: the first row is always past the sets
+  // already done, so a total below doneCount produces no rows at all rather
+  // than rows for sets already logged. The Math.max above says the same
+  // thing, but it can never be the line that enforces it.
   for (let position = doneCount + 1; position <= total; position += 1) {
     const source = lastWorking[position - 1] ?? lastWorking[lastWorking.length - 1];
     rows.push({
