@@ -558,6 +558,35 @@ it('keeps a way out when the routine is emptied mid-session', async () => {
   expect(await getSession(session.id)).toBeUndefined();
 });
 
+it('recovers from an emptied routine when an exercise is added', async () => {
+  // Backs the claim sessionControls' comment makes: Add exercise is the
+  // constructive way out of that branch, not merely a button that happens
+  // to render there. Finish and Discard end the session; this one continues
+  // it, which is what someone standing in the gym actually wants.
+  const user = userEvent.setup();
+  const { routine } = await benchRoutine('Push A', 1);
+  await createCustomExercise({
+    name: 'Cable Fly',
+    primaryMuscles: ['chest'],
+    secondaryMuscles: [],
+    equipment: 'cable',
+    measurementType: 'weight_reps',
+  });
+  await startSession(routine);
+  await setRoutineItems(routine.id, []);
+
+  renderScreen();
+
+  await user.click(await screen.findByRole('button', { name: /add exercise/i }));
+  await user.click(await screen.findByRole('button', { name: /cable fly/i }));
+
+  expect(
+    await screen.findByRole('heading', { level: 3, name: /cable fly/i }),
+  ).toBeInTheDocument();
+  expect(screen.getByRole('button', { name: /log set 1/i })).toBeInTheDocument();
+  expect(screen.queryByText(/no exercises/i)).toBeNull();
+});
+
 it('takes the logged sets with a discarded session', async () => {
   const user = userEvent.setup();
   const { exercise, routine } = await benchRoutine('Push A', 1);
