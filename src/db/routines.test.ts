@@ -117,19 +117,29 @@ describe('updateRoutineItems', () => {
   });
 
   it('reads fresh items rather than trusting a stale caller array', async () => {
-    // The Plan 2 finding: two fast taps recompute from an array captured at
-    // render, so the second silently discards the first. Reading inside the
-    // transaction makes both land.
+    // The Plan 2 finding, made concurrent (the house idiom: see
+    // cycles.test.ts's "creates exactly one cycle when called concurrently"
+    // and sets.test.ts's "assigns distinct orders under concurrent calls").
+    // Two overlapping removals of *different* items: a get-then-set built
+    // from a caller-held array lets the second call's read race ahead of
+    // the first call's write, silently discarding the earlier removal.
+    // Reading inside one transaction serializes the two writes so both
+    // removals land — Promise.all rather than two awaited calls, since
+    // sequential awaited calls always observe the prior write regardless
+    // of transactional atomicity and would pass even without it.
     const routine = await createRoutine('Push A');
     await setRoutineItems(routine.id, [
       { id: 'a', exerciseId: 'bench', order: 0 },
       { id: 'b', exerciseId: 'row', order: 1 },
+      { id: 'c', exerciseId: 'squat', order: 2 },
     ]);
 
-    await updateRoutineItems(routine.id, (items) => items.filter((i) => i.id === 'a'));
-    await updateRoutineItems(routine.id, (items) => items.filter((i) => i.id !== 'a'));
+    await Promise.all([
+      updateRoutineItems(routine.id, (items) => items.filter((i) => i.id !== 'a')),
+      updateRoutineItems(routine.id, (items) => items.filter((i) => i.id !== 'b')),
+    ]);
 
-    expect((await getRoutine(routine.id))?.items).toEqual([]);
+    expect((await getRoutine(routine.id))?.items.map((i) => i.id)).toEqual(['c']);
   });
 
   it('rejects an unknown routine', async () => {
