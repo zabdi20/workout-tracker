@@ -95,12 +95,78 @@ export function ActiveSessionScreen() {
 
   const focused = focusedId && exerciseIds.includes(focusedId) ? focusedId : exerciseIds[0];
 
+  async function finish() {
+    let done = false;
+    await run(async () => {
+      await finishSession(session.id);
+      done = true;
+    });
+    // Gated on the local flag, not run unconditionally: a failed finish must
+    // leave the user on this screen with their session still open, not send
+    // them to Today believing it completed.
+    if (done) navigate('/');
+  }
+
+  async function discard() {
+    let done = false;
+    await run(async () => {
+      await discardSession(session.id);
+      done = true;
+    });
+    if (done) navigate('/');
+  }
+
+  // Declared above the early returns and rendered by every path below, in
+  // one copy rather than three. The empty-exercise-list path is why: a
+  // routine emptied while its session is open used to return early with no
+  // Finish and no Discard, and Today offers Resume rather than Start while a
+  // session is in progress, so the only way out was clearing site data —
+  // which takes every logged workout with it, since there is no export yet.
+  // One copy cannot rot out of sync with the branch that needs it.
+  //
+  // Add exercise rides along because it is the constructive escape: adding
+  // one puts a row back on an emptied session and the screen recovers.
+  const sessionControls = (
+    <>
+      <button type="button" onClick={() => setPicking((p) => !p)}>
+        {picking ? 'Done adding' : 'Add exercise'}
+      </button>
+
+      {picking && (
+        <ExerciseBrowser
+          onSelect={(chosen) => {
+            setAdded((a) => (a.includes(chosen.id) ? a : [...a, chosen.id]));
+            setFocusedId(chosen.id);
+            setPicking(false);
+          }}
+        />
+      )}
+
+      <button type="button" onClick={() => void finish()}>
+        Finish workout
+      </button>
+
+      {confirmingDiscard ? (
+        <p>
+          Discard this workout and everything logged in it?
+          <button type="button" onClick={() => void discard()}>Yes, discard it</button>
+          <button type="button" onClick={() => setConfirmingDiscard(false)}>Keep it</button>
+        </p>
+      ) : (
+        <button type="button" onClick={() => setConfirmingDiscard(true)}>
+          Discard workout
+        </button>
+      )}
+    </>
+  );
+
   if (exerciseIds.length === 0) {
     return (
       <section>
         <h2>{session.name}</h2>
         {error && <p role="alert">{error}</p>}
         <p className="empty">This routine has no exercises.</p>
+        {sessionControls}
       </section>
     );
   }
@@ -110,10 +176,15 @@ export function ActiveSessionScreen() {
     // Unreachable in practice: exercises are archived rather than deleted,
     // and the querier above loads archived ones. Guarding here once keeps
     // every use below non-null instead of scattering `!` assertions.
+    // It still renders the write error and the controls the other paths do:
+    // the one branch that behaves differently is the one nobody notices has
+    // gone wrong.
     return (
       <section>
         <h2>{session.name}</h2>
+        {error && <p role="alert">{error}</p>}
         <p role="alert">That exercise is no longer in the library.</p>
+        {sessionControls}
       </section>
     );
   }
@@ -212,27 +283,6 @@ export function ActiveSessionScreen() {
     // for a screen the user cannot do anything with.
     setBusy(null);
   };
-
-  async function finish() {
-    let done = false;
-    await run(async () => {
-      await finishSession(session.id);
-      done = true;
-    });
-    // Gated on the local flag, not run unconditionally: a failed finish must
-    // leave the user on this screen with their session still open, not send
-    // them to Today believing it completed.
-    if (done) navigate('/');
-  }
-
-  async function discard() {
-    let done = false;
-    await run(async () => {
-      await discardSession(session.id);
-      done = true;
-    });
-    if (done) navigate('/');
-  }
 
   return (
     <section>
@@ -365,35 +415,7 @@ export function ActiveSessionScreen() {
         Add set
       </button>
 
-      <button type="button" onClick={() => setPicking((p) => !p)}>
-        {picking ? 'Done adding' : 'Add exercise'}
-      </button>
-
-      {picking && (
-        <ExerciseBrowser
-          onSelect={(chosen) => {
-            setAdded((a) => (a.includes(chosen.id) ? a : [...a, chosen.id]));
-            setFocusedId(chosen.id);
-            setPicking(false);
-          }}
-        />
-      )}
-
-      <button type="button" onClick={() => void finish()}>
-        Finish workout
-      </button>
-
-      {confirmingDiscard ? (
-        <p>
-          Discard this workout and everything logged in it?
-          <button type="button" onClick={() => void discard()}>Yes, discard it</button>
-          <button type="button" onClick={() => setConfirmingDiscard(false)}>Keep it</button>
-        </p>
-      ) : (
-        <button type="button" onClick={() => setConfirmingDiscard(true)}>
-          Discard workout
-        </button>
-      )}
+      {sessionControls}
     </section>
   );
 }

@@ -437,6 +437,32 @@ it('asks before discarding', async () => {
   expect(await getSession(session.id)).toBeUndefined();
 });
 
+it('keeps a way out when the routine is emptied mid-session', async () => {
+  // Start Push A, then remove its only exercise from the routine. The screen
+  // has nothing to log — but Today offers Resume rather than Start while a
+  // session is open, and startSession refuses a different routine, so a
+  // branch with no Finish and no Discard is a soft-lock whose only escape is
+  // clearing site data. That takes every logged workout with it.
+  const user = userEvent.setup();
+  const { routine } = await benchRoutine('Push A', 3);
+  const session = await startSession(routine);
+  await setRoutineItems(routine.id, []);
+
+  renderScreen();
+
+  expect(await screen.findByText(/no exercises/i)).toBeInTheDocument();
+  expect(screen.getByRole('button', { name: /finish workout/i })).toBeInTheDocument();
+  // The constructive escape, reachable from the same branch.
+  expect(screen.getByRole('button', { name: /add exercise/i })).toBeInTheDocument();
+
+  await user.click(screen.getByRole('button', { name: /discard workout/i }));
+  await user.click(await screen.findByRole('button', { name: /yes, discard it/i }));
+
+  expect(await screen.findByText('Today screen')).toBeInTheDocument();
+  const { getSession } = await import('../../db/sessions');
+  expect(await getSession(session.id)).toBeUndefined();
+});
+
 it('takes the logged sets with a discarded session', async () => {
   const user = userEvent.setup();
   const { exercise, routine } = await benchRoutine('Push A', 1);
