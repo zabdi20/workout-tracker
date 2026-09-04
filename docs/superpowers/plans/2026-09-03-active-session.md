@@ -1753,22 +1753,23 @@ git commit -m "feat: mutate routine items inside a transaction"
 
 - [ ] **Step 11: Write the failing tests for the editor's prescription inputs**
 
-Append to `src/ui/routines/RoutineEditor.test.tsx`. Match the file's existing render helper and imports; it renders the editor inside a `MemoryRouter` with a route param. Add these:
+Append to `src/ui/routines/RoutineEditor.test.tsx`. That file already provides
+`renderAt(routineId)` and `seedExercise(name)` — which builds a chest / barbell /
+`weight_reps` exercise, exactly the shape these tests need. Use both rather than
+inlining new ones.
+
+Its imports already include `getRoutine`. Add only what is missing: `waitFor` to the
+`@testing-library/react` import, and `archiveExercise` to the `../../db/exercises`
+import.
 
 ```tsx
 it('saves a prescription when the field loses focus', async () => {
   const user = userEvent.setup();
-  const ex = await createCustomExercise({
-    name: 'Barbell Bench Press',
-    primaryMuscles: ['chest'],
-    secondaryMuscles: [],
-    equipment: 'barbell',
-    measurementType: 'weight_reps',
-  });
+  const ex = await seedExercise('Barbell Bench Press');
   const routine = await createRoutine('Push A');
   await setRoutineItems(routine.id, [{ id: 'i1', exerciseId: ex.id, order: 0 }]);
 
-  renderEditor(routine.id);
+  renderAt(routine.id);
 
   const sets = await screen.findByLabelText(/sets for barbell bench press/i);
   await user.type(sets, '4');
@@ -1780,40 +1781,28 @@ it('saves a prescription when the field loses focus', async () => {
 });
 
 it('shows the stored prescription when the editor opens', async () => {
-  const ex = await createCustomExercise({
-    name: 'Barbell Bench Press',
-    primaryMuscles: ['chest'],
-    secondaryMuscles: [],
-    equipment: 'barbell',
-    measurementType: 'weight_reps',
-  });
+  const ex = await seedExercise('Barbell Bench Press');
   const routine = await createRoutine('Push A');
   await setRoutineItems(routine.id, [
     { id: 'i1', exerciseId: ex.id, order: 0, targetSets: 4, targetRepMin: 6, targetRepMax: 8 },
   ]);
 
-  renderEditor(routine.id);
+  renderAt(routine.id);
 
-  expect(await screen.findByLabelText(/sets for barbell bench press/i)).toHaveValue(4);
+  expect(await screen.findByLabelText(/^sets for barbell bench press/i)).toHaveValue(4);
   expect(screen.getByLabelText(/lowest reps for barbell bench press/i)).toHaveValue(6);
   expect(screen.getByLabelText(/highest reps for barbell bench press/i)).toHaveValue(8);
 });
 
 it('refuses a backwards rep range and does not write it', async () => {
   const user = userEvent.setup();
-  const ex = await createCustomExercise({
-    name: 'Barbell Bench Press',
-    primaryMuscles: ['chest'],
-    secondaryMuscles: [],
-    equipment: 'barbell',
-    measurementType: 'weight_reps',
-  });
+  const ex = await seedExercise('Barbell Bench Press');
   const routine = await createRoutine('Push A');
   await setRoutineItems(routine.id, [
     { id: 'i1', exerciseId: ex.id, order: 0, targetRepMax: 6 },
   ]);
 
-  renderEditor(routine.id);
+  renderAt(routine.id);
 
   const min = await screen.findByLabelText(/lowest reps for barbell bench press/i);
   await user.type(min, '8');
@@ -1825,21 +1814,15 @@ it('refuses a backwards rep range and does not write it', async () => {
 
 it('clears a prescription field when it is emptied', async () => {
   const user = userEvent.setup();
-  const ex = await createCustomExercise({
-    name: 'Barbell Bench Press',
-    primaryMuscles: ['chest'],
-    secondaryMuscles: [],
-    equipment: 'barbell',
-    measurementType: 'weight_reps',
-  });
+  const ex = await seedExercise('Barbell Bench Press');
   const routine = await createRoutine('Push A');
   await setRoutineItems(routine.id, [
     { id: 'i1', exerciseId: ex.id, order: 0, targetSets: 4 },
   ]);
 
-  renderEditor(routine.id);
+  renderAt(routine.id);
 
-  const sets = await screen.findByLabelText(/sets for barbell bench press/i);
+  const sets = await screen.findByLabelText(/^sets for barbell bench press/i);
   await user.clear(sets);
   await user.tab();
 
@@ -1849,24 +1832,16 @@ it('clears a prescription field when it is emptied', async () => {
 });
 
 it('marks an archived exercise so it is not mistaken for an active one', async () => {
-  const ex = await createCustomExercise({
-    name: 'Barbell Bench Press',
-    primaryMuscles: ['chest'],
-    secondaryMuscles: [],
-    equipment: 'barbell',
-    measurementType: 'weight_reps',
-  });
+  const ex = await seedExercise('Barbell Bench Press');
   await archiveExercise(ex.id);
   const routine = await createRoutine('Push A');
   await setRoutineItems(routine.id, [{ id: 'i1', exerciseId: ex.id, order: 0 }]);
 
-  renderEditor(routine.id);
+  renderAt(routine.id);
 
   expect(await screen.findByText(/archived/i)).toBeInTheDocument();
 });
 ```
-
-Add to that file's imports: `waitFor` from `@testing-library/react`, `getRoutine` from `../../db/routines`, and `archiveExercise` from `../../db/exercises`.
 
 - [ ] **Step 12: Run the tests to verify they fail**
 
@@ -2185,32 +2160,49 @@ git commit -m "feat: reset a bundled exercise to its shipped data"
 
 - [ ] **Step 6: Write the failing tests for the Library and form changes**
 
-Append to `src/ui/library/LibraryScreen.test.tsx`, matching its existing render helper:
+`src/ui/library/LibraryScreen.test.tsx` renders directly with `render(<LibraryScreen />)`
+— it has no render helper. Add `db` to its imports from `../../db/db`, then append:
 
 ```tsx
 it('opens the edit form for a bundled exercise', async () => {
   const user = userEvent.setup();
-  await prepareLibrary();
-  const original = (bundled as Exercise[])[0];
+  // One bundled-shaped row inserted directly rather than seeding all 650.
+  // Seeding would make the click ambiguous — many bundled names share a
+  // prefix, and some contain regex metacharacters.
+  await db.exercises.add({
+    id: 'side-to-side-box-shuffle',
+    name: 'Side to Side Box Shuffle',
+    primaryMuscles: ['quads'],
+    secondaryMuscles: [],
+    equipment: 'other',
+    measurementType: 'bodyweight_reps',
+    isCustom: false,
+    isArchived: false,
+  });
 
-  renderScreen();
+  render(<LibraryScreen />);
 
-  await user.click(await screen.findByRole('button', { name: new RegExp(original.name, 'i') }));
+  await user.click(
+    await screen.findByRole('button', { name: /side to side box shuffle/i }),
+  );
 
   expect(await screen.findByRole('heading', { name: /edit exercise/i })).toBeInTheDocument();
-  expect(screen.getByLabelText(/exercise name/i)).toHaveValue(original.name);
+  expect(screen.getByLabelText(/exercise name/i)).toHaveValue('Side to Side Box Shuffle');
 });
 ```
 
-Append to `src/ui/library/CustomExerciseForm.test.tsx`:
+`src/ui/library/CustomExerciseForm.test.tsx` already imports `createCustomExercise`,
+`listExercises` and `getExercise`. Add `waitFor` to the `@testing-library/react`
+import, `updateExercise` to the `../../db/exercises` import, and
+`import { prepareLibrary } from '../../db/seed';`. Then append:
 
 ```tsx
 it('offers Reset to bundled only for bundled exercises', async () => {
   await prepareLibrary();
-  const bundledExercise = (await listExercises())[0];
+  const bundledExercise = (await listExercises()).find((e) => !e.isCustom)!;
 
   render(
-    <CustomExerciseForm existing={bundledExercise} onDone={() => {}} onCancel={() => {}} />,
+    <CustomExerciseForm existing={bundledExercise} onDone={vi.fn()} onCancel={vi.fn()} />,
   );
 
   expect(screen.getByRole('button', { name: /reset to bundled/i })).toBeInTheDocument();
@@ -2225,7 +2217,7 @@ it('hides Reset to bundled for custom exercises', async () => {
     measurementType: 'bodyweight_reps',
   });
 
-  render(<CustomExerciseForm existing={custom} onDone={() => {}} onCancel={() => {}} />);
+  render(<CustomExerciseForm existing={custom} onDone={vi.fn()} onCancel={vi.fn()} />);
 
   expect(screen.queryByRole('button', { name: /reset to bundled/i })).toBeNull();
 });
@@ -2233,51 +2225,25 @@ it('hides Reset to bundled for custom exercises', async () => {
 it('restores the shipped data when reset is pressed', async () => {
   const user = userEvent.setup();
   await prepareLibrary();
-  const original = (await listExercises())[0];
+  const original = (await listExercises()).find((e) => !e.isCustom)!;
   await updateExercise(original.id, { name: 'Renamed', measurementType: 'duration' });
   const edited = (await getExercise(original.id))!;
 
   const onDone = vi.fn();
-  render(<CustomExerciseForm existing={edited} onDone={onDone} onCancel={() => {}} />);
+  render(<CustomExerciseForm existing={edited} onDone={onDone} onCancel={vi.fn()} />);
 
   await user.click(screen.getByRole('button', { name: /reset to bundled/i }));
 
   await waitFor(() => expect(onDone).toHaveBeenCalled());
-  expect((await getExercise(original.id))?.name).toBe(original.name);
+  const restored = await getExercise(original.id);
+  expect(restored?.name).toBe(original.name);
+  expect(restored?.measurementType).toBe(original.measurementType);
 });
 
-it('surfaces a failure to archive rather than failing silently', async () => {
-  const user = userEvent.setup();
-  const custom = await createCustomExercise({
-    name: 'Explosive Box Step-Up',
-    primaryMuscles: ['quads'],
-    secondaryMuscles: [],
-    equipment: 'bodyweight',
-    measurementType: 'bodyweight_reps',
-  });
-
-  vi.spyOn(exercisesModule, 'archiveExercise').mockRejectedValue(new Error('Quota exceeded'));
-
-  render(<CustomExerciseForm existing={custom} onDone={() => {}} onCancel={() => {}} />);
-  await user.click(screen.getByRole('button', { name: /archive/i }));
-
-  expect(await screen.findByRole('alert')).toHaveTextContent(/quota exceeded/i);
-});
-```
-
-For the last test, import the module namespace so the spy binds to the same
-object the component calls through:
-
-```tsx
-import * as exercisesModule from '../../db/exercises';
-```
-
-and change `CustomExerciseForm.tsx` to call `archiveExercise` through that
-same module binding — or, simpler and preferred, drop the spy and assert the
-error path by passing an `existing` whose id no longer exists:
-
-```tsx
-it('surfaces a failure to archive rather than failing silently', async () => {
+it('waits for the archive write before closing the form', async () => {
+  // handleArchive was fire-and-forget: it called onDone without awaiting, so a
+  // rejected write closed the form as though it had succeeded. Asserting that
+  // the row is archived by the time onDone fires pins the await.
   const user = userEvent.setup();
   const custom = await createCustomExercise({
     name: 'Explosive Box Step-Up',
@@ -2288,16 +2254,13 @@ it('surfaces a failure to archive rather than failing silently', async () => {
   });
   const onDone = vi.fn();
 
-  render(<CustomExerciseForm existing={custom} onDone={onDone} onCancel={() => {}} />);
+  render(<CustomExerciseForm existing={custom} onDone={onDone} onCancel={vi.fn()} />);
   await user.click(screen.getByRole('button', { name: /archive/i }));
 
   await waitFor(() => expect(onDone).toHaveBeenCalled());
+  expect((await getExercise(custom.id))?.isArchived).toBe(true);
 });
 ```
-
-Use the second form. It verifies the handler awaits its write and calls
-`onDone` only after it resolves, which is the behaviour the retrofit adds,
-without mocking a module the component imports directly.
 
 - [ ] **Step 7: Run the tests to verify they fail**
 
