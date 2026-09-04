@@ -1,6 +1,6 @@
 import { render, screen } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
-import { resetDbForTests } from '../../db/db';
+import { db, resetDbForTests } from '../../db/db';
 import { createCustomExercise } from '../../db/exercises';
 import { LibraryScreen } from './LibraryScreen';
 
@@ -143,4 +143,30 @@ it('swaps the edit form to the newly clicked exercise instead of keeping the sta
   await user.click(screen.getByText('Pec Deck'));
 
   expect(await screen.findByLabelText(/exercise name/i)).toHaveValue('Pec Deck');
+});
+
+it('opens the edit form for a bundled exercise', async () => {
+  const user = userEvent.setup();
+  // One bundled-shaped row inserted directly rather than seeding all 650.
+  // Seeding would make the click ambiguous — many bundled names share a
+  // prefix, and some contain regex metacharacters.
+  await db.exercises.add({
+    id: 'side-to-side-box-shuffle',
+    name: 'Side to Side Box Shuffle',
+    primaryMuscles: ['quads'],
+    secondaryMuscles: [],
+    equipment: 'other',
+    measurementType: 'bodyweight_reps',
+    isCustom: false,
+    isArchived: false,
+  });
+
+  render(<LibraryScreen />);
+
+  await user.click(
+    await screen.findByRole('button', { name: /side to side box shuffle/i }),
+  );
+
+  expect(await screen.findByRole('heading', { name: /edit exercise/i })).toBeInTheDocument();
+  expect(screen.getByLabelText(/exercise name/i)).toHaveValue('Side to Side Box Shuffle');
 });

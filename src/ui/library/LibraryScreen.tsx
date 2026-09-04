@@ -25,7 +25,7 @@ export function LibraryScreen() {
       )}
 
       <ExerciseBrowser
-        onSelect={(e) => e.isCustom && setEditing(e)}
+        onSelect={(e) => setEditing(e)}
         headerSlot={
           <button type="button" onClick={() => setEditing('new')}>
             New exercise

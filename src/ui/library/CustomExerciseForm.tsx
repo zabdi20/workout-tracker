@@ -1,6 +1,8 @@
 import { useState, type FormEvent } from 'react';
 import type { Equipment, Exercise, MeasurementType, MuscleGroup } from '../../db/types';
-import { archiveExercise, createCustomExercise, updateExercise } from '../../db/exercises';
+import {
+  archiveExercise, createCustomExercise, resetExerciseToBundled, updateExercise,
+} from '../../db/exercises';
 import {
   EQUIPMENT_TYPES, MUSCLE_GROUPS, equipmentLabel, muscleLabel,
 } from '../../domain/labels';
@@ -67,10 +69,30 @@ export function CustomExerciseForm({ existing, onDone, onCancel }: Props) {
     }
   }
 
+  // No try/catch: a rejection threw an unhandled promise rejection and left
+  // the form open with no explanation. This form already owns an `error`
+  // state (used by handleSubmit), so both writes below reuse it rather than
+  // introducing a second error surface inside one component.
   async function handleArchive() {
     if (!existing) return;
-    await archiveExercise(existing.id);
-    onDone();
+    setError(null);
+    try {
+      await archiveExercise(existing.id);
+      onDone();
+    } catch (e: unknown) {
+      setError(e instanceof Error ? e.message : String(e));
+    }
+  }
+
+  async function handleReset() {
+    if (!existing) return;
+    setError(null);
+    try {
+      await resetExerciseToBundled(existing.id);
+      onDone();
+    } catch (e: unknown) {
+      setError(e instanceof Error ? e.message : String(e));
+    }
   }
 
   return (
@@ -122,6 +144,9 @@ export function CustomExerciseForm({ existing, onDone, onCancel }: Props) {
       <button type="button" onClick={onCancel}>Cancel</button>
       {existing && (
         <button type="button" onClick={handleArchive}>Archive</button>
+      )}
+      {existing && !existing.isCustom && (
+        <button type="button" onClick={handleReset}>Reset to bundled</button>
       )}
     </form>
   );
