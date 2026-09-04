@@ -262,7 +262,12 @@ it('removes a logged set', async () => {
   });
 });
 
-it('renders only the fields a duration exercise needs', async () => {
+it('renders only the fields a duration exercise needs, and writes through them', async () => {
+  // confirmSet maps a field spec's `property` onto a LoggedSet through a
+  // union-keyed `Record<string, number>` cast. Rendering the field proves
+  // nothing about that cast: only confirming the row does. This covers the
+  // write, the durationSeconds mapping and formatSet's duration branch.
+  const user = userEvent.setup();
   const plank = await createCustomExercise({
     name: 'Plank',
     primaryMuscles: ['abs'],
@@ -272,13 +277,55 @@ it('renders only the fields a duration exercise needs', async () => {
   });
   const routine = await createRoutine('Core');
   await setRoutineItems(routine.id, [{ id: 'i1', exerciseId: plank.id, order: 0 }]);
-  await startSession(routine);
+  const session = await startSession(routine);
 
   renderScreen();
 
-  expect(await screen.findByLabelText(/seconds for set 1/i)).toBeInTheDocument();
+  const seconds = await screen.findByLabelText(/seconds for set 1/i);
   expect(screen.queryByLabelText(/weight for set 1/i)).toBeNull();
   expect(screen.queryByLabelText(/reps for set 1/i)).toBeNull();
+
+  await user.type(seconds, '45');
+  await user.click(screen.getByRole('button', { name: /log set 1/i }));
+
+  await waitFor(async () => {
+    const stored = await listSetsForSession(session.id);
+    expect(stored).toHaveLength(1);
+    expect(stored[0].durationSeconds).toBe(45);
+    expect(stored[0].weight).toBeUndefined();
+    expect(stored[0].reps).toBeUndefined();
+  });
+  expect(await screen.findByText(/1\. 0:45/)).toBeInTheDocument();
+});
+
+it('writes both fields of a distance-and-duration set', async () => {
+  // The only two-field non-weight type, so it is the one that would catch a
+  // field mapping that happened to work for a single-field type by accident.
+  const user = userEvent.setup();
+  const rower = await createCustomExercise({
+    name: 'Rowing Machine',
+    primaryMuscles: ['upper_back'],
+    secondaryMuscles: [],
+    equipment: 'machine',
+    measurementType: 'distance_duration',
+  });
+  const routine = await createRoutine('Conditioning');
+  await setRoutineItems(routine.id, [{ id: 'i1', exerciseId: rower.id, order: 0 }]);
+  const session = await startSession(routine);
+
+  renderScreen();
+
+  await user.type(await screen.findByLabelText(/metres for set 1/i), '500');
+  await user.type(screen.getByLabelText(/seconds for set 1/i), '105');
+  await user.click(screen.getByRole('button', { name: /log set 1/i }));
+
+  await waitFor(async () => {
+    const stored = await listSetsForSession(session.id);
+    expect(stored).toHaveLength(1);
+    expect(stored[0].distanceMeters).toBe(500);
+    expect(stored[0].durationSeconds).toBe(105);
+  });
+  expect(await screen.findByText(/1\. 500 m in 1:45/)).toBeInTheDocument();
 });
 
 it('has one remove control for the planned list, named for the last row', async () => {
