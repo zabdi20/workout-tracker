@@ -339,16 +339,23 @@ Every database write from an event handler goes through `run(...)` from
 
 Eight tasks, matching Plan 2's size.
 
-1. Session and set data access, including `lastPerformance`
+1. Session, set and settings data access, including `lastPerformance`
 2. `domain/measurement.ts` — the six-type table and formatting
 3. `domain/setPlan.ts` — planned-row derivation
 4. `updateRoutineItems`, `setItemPrescription`, and the prescription UI *(item 6)*
 5. Bundled exercise editing, Reset to bundled, and the two riding repairs *(item 8)*
-6. Today — Resume, Start, and pick a different routine
-7. Active Session — strip, focus, set rows, confirm, add and remove, warm-up
+6. Active Session — strip, focus, set rows, confirm, add and remove, warm-up
+7. Today — Resume, Start, and pick a different routine
 8. Add exercise mid-session, Finish, Discard, cycle advancement
 
 Tasks 2, 3 and 5 depend on nothing and can run in parallel.
+
+Active Session precedes Today deliberately. The other order would have Today
+linking to `/session` one commit before that route exists, leaving the app broken
+between two commits — and this project verifies intermediate commits standalone.
+Task 1 also carries `src/db/settings.ts`: the session screen needs `unitPreference`
+for new sets and `defaultRestSeconds` for the rest line, and nothing reads the
+settings row today.
 
 **No CSS in this plan.** Visual design stays deferred until the screens settle.
 
