@@ -154,7 +154,22 @@ export function ActiveSessionScreen() {
       }
     }
 
-    let logged = false;
+    // Nothing parsed for any field: there is nothing to write. Calling
+    // logSet here would put a set with no weight/reps/duration into the
+    // sets table for something the user never performed — exactly what the
+    // planned-rows-are-UI-state split exists to prevent, since that phantom
+    // set would then surface as next session's prefill and silently blank
+    // the row it was supposed to fill. Tapping a row you haven't filled in
+    // yet isn't an error; it's just a no-op.
+    if (Object.keys(values).length === 0) {
+      setBusy(null);
+      return;
+    }
+
+    // `wrote`, not `logged` — this function's own `logged` name is already
+    // taken by the outer `const logged = sets.filter(...)` (a LoggedSet[]),
+    // which this flag has no relation to.
+    let wrote = false;
     await run(async () => {
       await logSet({
         sessionId: session.id,
@@ -163,7 +178,7 @@ export function ActiveSessionScreen() {
         unit: row.unit,
         ...values,
       });
-      logged = true;
+      wrote = true;
     });
 
     // Gated on the local flag, not run unconditionally: run() swallows a
@@ -171,7 +186,7 @@ export function ActiveSessionScreen() {
     // means the code after it runs on both outcomes. Clearing here
     // regardless would wipe the weight and reps the user just typed the
     // moment a write fails — exactly when they need to retry, not retype.
-    if (logged) {
+    if (wrote) {
       setDrafts((d) => {
         const next = { ...d };
         for (const field of fields) delete next[draftKey(row.position, field.property)];
@@ -289,17 +304,28 @@ export function ActiveSessionScreen() {
             >
               Log set {row.position}
             </button>
-
-            <button
-              type="button"
-              aria-label={`Remove planned set ${row.position}`}
-              onClick={() => setAdjust((a) => ({ ...a, [focused]: (a[focused] ?? 0) - 1 }))}
-            >
-              Remove
-            </button>
           </li>
         ))}
       </ol>
+
+      {planned.length > 0 && (
+        <button
+          type="button"
+          // One control for the whole list, not one per row. `adjust` is a
+          // signed count that planSets applies to the total row count — it
+          // can express "one fewer row" but never "remove row N". A button
+          // per row wired to that decrement always dropped the
+          // highest-positioned row no matter which one was tapped, so the
+          // label ("Remove planned set N") lied for every row but the last.
+          // Naming the single remaining control for the row it actually
+          // removes keeps the label honest instead of making the model
+          // richer than a signed count for no user-visible gain.
+          aria-label={`Remove planned set ${planned[planned.length - 1].position}`}
+          onClick={() => setAdjust((a) => ({ ...a, [focused]: (a[focused] ?? 0) - 1 }))}
+        >
+          Remove
+        </button>
+      )}
 
       <button
         type="button"

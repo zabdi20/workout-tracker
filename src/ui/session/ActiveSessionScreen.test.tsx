@@ -281,6 +281,52 @@ it('renders only the fields a duration exercise needs', async () => {
   expect(screen.queryByLabelText(/reps for set 1/i)).toBeNull();
 });
 
+it('has one remove control for the planned list, named for the last row', async () => {
+  // adjust is a signed count applied to the total row count, not a
+  // position, so it can only ever drop the highest-positioned row. A
+  // control per row would always remove the last row no matter which one
+  // was tapped — this pins that there is exactly one control, and that its
+  // accessible name matches the row it actually removes.
+  const user = userEvent.setup();
+  const { routine } = await benchRoutine('Push A', 3);
+  await startSession(routine);
+
+  renderScreen();
+  await screen.findByRole('button', { name: /log set 3/i });
+
+  const removeControls = screen.getAllByLabelText(/remove planned set/i);
+  expect(removeControls).toHaveLength(1);
+  expect(removeControls[0]).toHaveAccessibleName('Remove planned set 3');
+
+  await user.click(removeControls[0]);
+
+  expect(screen.queryByRole('button', { name: /log set 3/i })).toBeNull();
+  expect(screen.getByRole('button', { name: /log set 2/i })).toBeInTheDocument();
+  expect(screen.getByRole('button', { name: /log set 1/i })).toBeInTheDocument();
+});
+
+it('does not write a set when a blank row is confirmed', async () => {
+  // No last performance for this exercise, so the row's inputs start
+  // genuinely empty rather than prefilled. Confirming it with nothing
+  // typed must not call logSet — that would put a set nobody performed
+  // into the sets table, where it would resurface as next session's
+  // prefill and silently blank the row it was meant to fill.
+  const user = userEvent.setup();
+  const { routine } = await benchRoutine('Push A', 2);
+  const session = await startSession(routine);
+
+  renderScreen();
+
+  const weightInput = await screen.findByLabelText(/weight for set 1/i);
+  expect(weightInput).toHaveValue(null);
+  await user.click(screen.getByRole('button', { name: /log set 1/i }));
+
+  expect(await listSetsForSession(session.id)).toHaveLength(0);
+  // The row is still there, unconsumed, ready to be filled in for real.
+  expect(screen.getByRole('button', { name: /log set 1/i })).toBeEnabled();
+  expect(weightInput).toHaveValue(null);
+});
+
 it('keeps what was typed when the write fails, so the user can retry it', async () => {
   // A rejected logSet must not cost the user their input. run() swallows
   // the rejection to surface it as an alert instead of throwing, and a
