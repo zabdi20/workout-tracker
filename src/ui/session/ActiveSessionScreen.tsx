@@ -60,6 +60,13 @@ export function ActiveSessionScreen() {
     const exerciseIds = new Set([
       ...(routine?.items ?? []).map((i) => i.exerciseId),
       ...sets.map((s) => s.exerciseId),
+      // An exercise added mid-session has no sets yet, so leaving it out
+      // here leaves `history` with no entry for the one the user just
+      // picked: the row renders unprefilled and the screen says "No history
+      // for this exercise yet" even when they trained it last week. It
+      // self-heals after the first set is logged — which is exactly the set
+      // that needed the reference.
+      ...added,
     ]);
     const history = Object.fromEntries(
       await Promise.all(
@@ -70,7 +77,12 @@ export function ActiveSessionScreen() {
     );
 
     return { session, routine, sets, exercises, settings, history };
-  }, []);
+    // `added` is a dependency because the querier reads it. Resubscribing
+    // cannot loop: setAdded returns the same array when the id is already
+    // there, so the identity only changes when a new exercise is picked.
+    // useLiveQuery keeps the previous result across a deps change, so this
+    // re-query does not flash the loading state.
+  }, [added]);
 
   if (data === undefined) return <p>Loading…</p>;
   if (data === null) return <Navigate to="/" replace />;

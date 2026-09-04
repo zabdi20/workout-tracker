@@ -377,6 +377,42 @@ it('adds an exercise that is not in the routine', async () => {
   expect(screen.getByRole('button', { name: /log set 1/i })).toBeInTheDocument();
 });
 
+it('gives an added exercise its history from the last time it was trained', async () => {
+  // The deviation path: the squat rack is occupied, so log something else.
+  // The exercise is not in today's routine and has no sets in this session,
+  // so it only reaches the history read if adding it is what puts it there.
+  // Without that the row renders unprefilled and the screen claims there is
+  // no history — self-healing after the first set, which is the one set
+  // that needed the reference.
+  const user = userEvent.setup();
+  const { routine } = await benchRoutine('Push A', 1);
+  const fly = await createCustomExercise({
+    name: 'Cable Fly',
+    primaryMuscles: ['chest'],
+    secondaryMuscles: [],
+    equipment: 'cable',
+    measurementType: 'weight_reps',
+  });
+
+  const previous = await startSession(routine);
+  await logSet({
+    sessionId: previous.id, exerciseId: fly.id, setType: 'working',
+    unit: 'lb', weight: 30, reps: 12,
+  });
+  await (await import('../../db/sessions')).finishSession(previous.id);
+  await startSession(routine);
+
+  renderScreen();
+
+  await user.click(await screen.findByRole('button', { name: /add exercise/i }));
+  await user.click(await screen.findByRole('button', { name: /cable fly/i }));
+
+  expect(await screen.findByText(/last time: 30 lb × 12/i)).toBeInTheDocument();
+  expect(screen.queryByText(/no history for this exercise yet/i)).toBeNull();
+  expect(screen.getByLabelText(/weight for set 1/i)).toHaveValue(30);
+  expect(screen.getByLabelText(/reps for set 1/i)).toHaveValue(12);
+});
+
 it('keeps an added exercise after a set is logged into it', async () => {
   const { routine } = await benchRoutine('Push A', 1);
   const fly = await createCustomExercise({
