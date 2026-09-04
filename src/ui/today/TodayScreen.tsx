@@ -1,11 +1,13 @@
-import { useEffect } from 'react';
-import { Link } from 'react-router-dom';
+import { useEffect, useState } from 'react';
+import { Link, useNavigate } from 'react-router-dom';
 import { useLiveQuery } from 'dexie-react-hooks';
 import { getActiveCycle, getOrCreateActiveCycle, saveCycle } from '../../db/cycles';
-import { getRoutine } from '../../db/routines';
+import { getRoutine, listRoutines } from '../../db/routines';
 import { listExercises } from '../../db/exercises';
+import { getInProgressSession, startSession } from '../../db/sessions';
 import { nextRoutineId, skipNext, cyclePosition } from '../../domain/cycle';
 import { useWriteError } from '../useWriteError';
+import type { Routine } from '../../db/types';
 
 export function TodayScreen() {
   const { error, run } = useWriteError();
@@ -23,13 +25,37 @@ export function TodayScreen() {
     if (!cycle) return null;
     const upNextId = nextRoutineId(cycle);
     const routine = upNextId ? (await getRoutine(upNextId)) ?? null : null;
-    return { cycle, routine };
+    // Both read-only, so they join the same querier rather than a second
+    // useLiveQuery — a split query lags a render behind this one, which
+    // would flash stale UI every time the data changes.
+    const inProgress = await getInProgressSession();
+    const routines = await listRoutines();
+    return { cycle, routine, inProgress, routines };
   }, []);
   const exercises = useLiveQuery(() => listExercises({ includeArchived: true }), []);
 
   useEffect(() => {
     void run(() => getOrCreateActiveCycle());
   }, []);
+
+  const navigate = useNavigate();
+  const [picking, setPicking] = useState(false);
+
+  async function start(routine: Routine) {
+    // startSession opens a readwrite transaction, which is why it is called
+    // from a handler and never from the querier above — Dexie throws
+    // ReadOnlyError for a readwrite transaction inside a liveQuery.
+    let started = false;
+    await run(async () => {
+      await startSession(routine);
+      started = true;
+    });
+    // Gated on the local flag: run() swallows a rejection so it can render
+    // the message instead of throwing, so navigating unconditionally would
+    // send the user to /session after a failed start — which redirects
+    // straight back since no session exists there.
+    if (started) navigate('/session');
+  }
 
   if (data === undefined || data === null || exercises === undefined) {
     // Checked before falling through to "Loading…": if the bootstrap
@@ -48,7 +74,7 @@ export function TodayScreen() {
     }
     return <p>Loading…</p>;
   }
-  const { cycle, routine } = data;
+  const { cycle, routine, inProgress, routines } = data;
 
   if (cycle.routineIds.length === 0) {
     return (
@@ -94,6 +120,38 @@ export function TodayScreen() {
       )}
 
       {error && <p role="alert">{error}</p>}
+
+      {inProgress ? (
+        <p>
+          <Link to="/session">Resume {inProgress.name}</Link>, started{' '}
+          {new Date(inProgress.startedAt).toLocaleString()}
+        </p>
+      ) : (
+        routine !== null &&
+        routine.items.length > 0 && (
+          <button type="button" onClick={() => void start(routine)}>
+            Start {routine.name}
+          </button>
+        )
+      )}
+
+      <button type="button" onClick={() => setPicking((p) => !p)}>
+        {picking ? 'Never mind' : 'Do a different one'}
+      </button>
+
+      {picking && (
+        <ul className="routine-picker">
+          {routines
+            .filter((r) => r.items.length > 0)
+            .map((r) => (
+              <li key={r.id}>
+                <button type="button" onClick={() => void start(r)}>
+                  {r.name}
+                </button>
+              </li>
+            ))}
+        </ul>
+      )}
 
       <button type="button" onClick={() => run(() => saveCycle(skipNext(cycle)))}>
         Skip to next
