@@ -35,7 +35,9 @@ function stubAudio(initialState: 'running' | 'suspended' = 'running') {
       connect: vi.fn(),
     })),
   };
-  const ctor = vi.fn(() => context);
+  const ctor = vi.fn(function AudioContextStub() {
+    return context;
+  });
   vi.stubGlobal('AudioContext', ctor);
   return { context, ctor, oscillators };
 }
