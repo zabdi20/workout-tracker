@@ -37,7 +37,7 @@ export function unlockRestTone(): void {
     const Ctor = audioContextCtor();
     if (!Ctor) return;
     context ??= new Ctor();
-    if (context.state === 'suspended') void context.resume();
+    if (context.state === 'suspended') context.resume().catch(() => {});
   } catch {
     // A context the browser refuses to create is not a reason to fail a set
     // log.

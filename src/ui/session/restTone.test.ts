@@ -96,3 +96,22 @@ it('stays silent when the context is not running', () => {
   expect(() => playRestTone()).not.toThrow();
   expect(oscillators).toHaveLength(0);
 });
+
+it('attaches a rejection handler to resume so rejections cannot escape', () => {
+  const { context } = stubAudio('suspended');
+  let catchHandlerAttached = false;
+  const mockResume = vi.fn(() => {
+    const promise = Promise.reject(new Error('resume rejected'));
+    // Spy on the promise to check if .catch was called on it
+    const originalCatch = promise.catch.bind(promise);
+    promise.catch = vi.fn(originalCatch);
+    return promise;
+  });
+  context.resume = mockResume;
+  unlockRestTone();
+  expect(mockResume).toHaveBeenCalled();
+  const promise = mockResume.mock.results[0].value as any;
+  // With the fix, .catch should be called on the promise
+  // (Without the fix, .catch would not be called)
+  expect(promise.catch).toHaveBeenCalled();
+});
