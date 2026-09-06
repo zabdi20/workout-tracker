@@ -97,21 +97,37 @@ it('stays silent when the context is not running', () => {
   expect(oscillators).toHaveLength(0);
 });
 
-it('attaches a rejection handler to resume so rejections cannot escape', () => {
+it('attaches a rejection handler to resume so rejections cannot escape', async () => {
   const { context } = stubAudio('suspended');
-  let catchHandlerAttached = false;
-  const mockResume = vi.fn(() => {
-    const promise = Promise.reject(new Error('resume rejected'));
-    // Spy on the promise to check if .catch was called on it
-    const originalCatch = promise.catch.bind(promise);
-    promise.catch = vi.fn(originalCatch);
-    return promise;
-  });
-  context.resume = mockResume;
-  unlockRestTone();
-  expect(mockResume).toHaveBeenCalled();
-  const promise = mockResume.mock.results[0].value as any;
-  // With the fix, .catch should be called on the promise
-  // (Without the fix, .catch would not be called)
-  expect(promise.catch).toHaveBeenCalled();
+  let resumeCalled = false;
+  // A plain function, not vi.fn: vi.fn's own bookkeeping (to support
+  // toHaveResolved/toHaveRejected) attaches a .then/.catch to every promise
+  // it returns, which would mask the very unhandled rejection this test
+  // needs to observe.
+  context.resume = (() => {
+    resumeCalled = true;
+    return Promise.reject(new Error('resume rejected'));
+  }) as unknown as typeof context.resume;
+
+  // Observe the real behavior a missing catch handler would produce — an
+  // 'unhandledRejection' event — rather than spying on the promise's own
+  // .catch, which fights the generic signature of Promise#catch under
+  // strict TypeScript.
+  let unhandled: unknown;
+  const onUnhandledRejection = (reason: unknown) => {
+    unhandled = reason;
+  };
+  process.on('unhandledRejection', onUnhandledRejection);
+
+  try {
+    unlockRestTone();
+    expect(resumeCalled).toBe(true);
+    // Flush the microtask queue (and beyond, into a macrotask) so that a
+    // rejection with no attached handler would already have fired
+    // 'unhandledRejection' by the time we assert.
+    await new Promise((resolve) => setImmediate(resolve));
+    expect(unhandled).toBeUndefined();
+  } finally {
+    process.off('unhandledRejection', onUnhandledRejection);
+  }
 });
