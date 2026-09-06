@@ -8,6 +8,7 @@ import { startSession } from '../../db/sessions';
 import { listSetsForSession, logSet } from '../../db/sets';
 import { ActiveSessionScreen } from './ActiveSessionScreen';
 import { REST_TIMER_KEY } from './restTimerStore';
+import { unlockRestTone } from './restTone';
 
 // Only logSet is overridden, and only for the one test that needs it to
 // reject — every other test (including the ones that call logSet directly
@@ -19,6 +20,15 @@ vi.mock('../../db/sets', async (importOriginal) => {
   const actual = await importOriginal<typeof import('../../db/sets')>();
   return { ...actual, logSet: vi.fn(actual.logSet) };
 });
+
+// Spied rather than left real: jsdom has no AudioContext, so the real
+// module already no-ops, and a no-op call is indistinguishable from a
+// missing one without a mock to assert against.
+vi.mock('./restTone', () => ({
+  unlockRestTone: vi.fn(),
+  playRestTone: vi.fn(),
+  resetRestToneForTests: vi.fn(),
+}));
 
 beforeEach(async () => {
   await resetDbForTests();
@@ -623,6 +633,33 @@ it('starts rest when a set is confirmed', async () => {
   // Asserted through the banner's own control rather than its text: the
   // static prescription line already renders a "Rest 1:30" of its own.
   expect(await screen.findByRole('button', { name: /skip rest/i })).toBeInTheDocument();
+});
+
+it('unlocks the rest tone before writing the confirmed set', async () => {
+  // unlockRestTone must run as the first statement of confirmSet, before any
+  // await — iOS unlocks audio only inside a user gesture, and the write
+  // below is the handler's first await. Deleting the call (or moving it
+  // after the write) leaves every other test in this file passing, since
+  // nothing else exercises it; this is the one test that pins both facts.
+  vi.mocked(unlockRestTone).mockClear();
+  vi.mocked(logSet).mockClear();
+
+  const user = userEvent.setup();
+  const { routine } = await benchRoutine('Push A', 2);
+  await startSession(routine);
+
+  renderScreen();
+
+  await user.type(await screen.findByLabelText(/weight for set 1/i), '135');
+  await user.type(screen.getByLabelText(/reps for set 1/i), '8');
+  await user.click(screen.getByRole('button', { name: /log set 1/i }));
+
+  await waitFor(() => expect(logSet).toHaveBeenCalled());
+
+  expect(unlockRestTone).toHaveBeenCalled();
+  expect(vi.mocked(unlockRestTone).mock.invocationCallOrder[0]).toBeLessThan(
+    vi.mocked(logSet).mock.invocationCallOrder[0],
+  );
 });
 
 it('does not start rest when the set failed to save', async () => {
