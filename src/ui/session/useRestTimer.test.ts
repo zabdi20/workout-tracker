@@ -152,7 +152,7 @@ it('stays silent when the alert sound is switched off, but still marks it fired'
   await advance(91_000);
 
   expect(playRestTone).not.toHaveBeenCalled();
-  expect(readRestTimer('s1')?.firedAt).not.toBeNull();
+  expect(readRestTimer('s1')?.firedAt).toEqual(expect.any(Number));
 });
 
 it('does not beep late when rest ended while the app was away', async () => {
@@ -169,4 +169,51 @@ it('does not beep late when rest ended while the app was away', async () => {
 
   expect(playRestTone).not.toHaveBeenCalled();
   expect(result.current.view).toEqual({ phase: 'elapsed', overrunSeconds: 210 });
+});
+
+it('does not beep late when the deadline already passed on a cold reload', async () => {
+  // The primary iOS path: an installed PWA cold-reloads on resume rather
+  // than merely suspending, so there is no visibilitychange event to run
+  // the became-visible suppression — the document loads already visible.
+  // A record adopted this way must be treated identically to one that
+  // survived the background, or the tick effect's first tick plays the
+  // tone up to STALE_OVERRUN_SECONDS late.
+  writeRestTimer({
+    sessionId: 's1',
+    endsAt: T0 - 60_000,
+    restSeconds: 90,
+    firedAt: null,
+  });
+
+  const { result } = renderHook(() => useRestTimer('s1', true));
+  // The interval's first tick (500 ms, the hook's TICK_MS) is exactly what
+  // would play the tone late if the load effect had not already marked the
+  // record fired.
+  await advance(500);
+
+  expect(playRestTone).not.toHaveBeenCalled();
+  expect(result.current.view).toEqual({ phase: 'elapsed', overrunSeconds: 60 });
+  expect(readRestTimer('s1')?.firedAt).toEqual(expect.any(Number));
+});
+
+it('re-checks staleness on resume, not only at load', async () => {
+  // The other half of the iOS resume coin: a page that survives the whole
+  // background stretch never re-runs the load effect, so a record that
+  // went stale while hidden would otherwise sit forever as
+  // "Rest done — 743:12 over" and keep the 500 ms tick re-rendering the
+  // screen. staleness must be re-evaluated on visibilitychange too.
+  const { result } = renderHook(() => useRestTimer('s1', true));
+  setHidden(false);
+  act(() => result.current.start(90));
+
+  setHidden(true);
+  // 90 s to reach endsAt, then past STALE_OVERRUN_SECONDS of overrun.
+  await advance((90 + STALE_OVERRUN_SECONDS + 60) * 1000);
+  setHidden(false);
+  await act(async () => {
+    document.dispatchEvent(new Event('visibilitychange'));
+  });
+
+  expect(result.current.view).toBeNull();
+  expect(localStorage.getItem(REST_TIMER_KEY)).toBeNull();
 });

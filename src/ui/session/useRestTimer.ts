@@ -59,27 +59,6 @@ export function useRestTimer(sessionId: string | null, soundEnabled: boolean): R
     setRecordState(next);
   }, []);
 
-  useEffect(() => {
-    if (sessionId === null) {
-      setRecord(null);
-      return;
-    }
-    const stored = readRestTimer(sessionId);
-    if (stored === null) {
-      setRecord(null);
-      return;
-    }
-    // A rest abandoned long enough that m:ss would render nonsense is not a
-    // rest any more.
-    if (isStaleRestTimer(stored, Date.now())) {
-      clearRestTimer();
-      setRecord(null);
-      return;
-    }
-    setRecord(stored);
-    setNow(Date.now());
-  }, [sessionId, setRecord]);
-
   const fire = useCallback(
     (at: number, trigger: 'tick' | 'became-visible', seen: boolean) => {
       const current = recordRef.current;
@@ -97,6 +76,35 @@ export function useRestTimer(sessionId: string | null, soundEnabled: boolean): R
   );
 
   useEffect(() => {
+    if (sessionId === null) {
+      setRecord(null);
+      return;
+    }
+    const stored = readRestTimer(sessionId);
+    if (stored === null) {
+      setRecord(null);
+      return;
+    }
+    const at = Date.now();
+    // A rest abandoned long enough that m:ss would render nonsense is not a
+    // rest any more.
+    if (isStaleRestTimer(stored, at)) {
+      clearRestTimer();
+      setRecord(null);
+      return;
+    }
+    setRecord(stored);
+    setNow(at);
+    // A record adopted with its deadline already past crossed it while this
+    // page was not alive — a cold reload on resume, the common iOS path, has
+    // no visibilitychange event to run the suppression below. Treated
+    // identically to returning from the background: mark it fired, make no
+    // sound. `fire` reads recordRef, which the setRecord above already
+    // updated synchronously, so this needs no reordering.
+    fire(at, 'became-visible', document.visibilityState === 'visible');
+  }, [sessionId, setRecord, fire]);
+
+  useEffect(() => {
     if (record === null) return;
     const id = setInterval(() => {
       const at = Date.now();
@@ -112,14 +120,27 @@ export function useRestTimer(sessionId: string | null, soundEnabled: boolean): R
       const at = Date.now();
       setVisible(seen);
       setNow(at);
+      if (!seen) return;
+      const current = recordRef.current;
+      // Checked again here, not only when the record was first loaded: a
+      // page that survives the whole background stretch never re-runs the
+      // load effect, so a rest abandoned long enough to be nonsense would
+      // otherwise sit forever as "Rest done — 743:12 over" and keep the
+      // 500 ms tick re-rendering the screen. Checked before firing, so a
+      // stale record is cleared rather than marked fired.
+      if (current !== null && isStaleRestTimer(current, at)) {
+        clearRestTimer();
+        setRecord(null);
+        return;
+      }
       // Coming back to find rest already over marks it fired without a sound.
       // The spike measured that nothing could have played while away, and a
       // beep now would read as "rest just ended" when it did not.
-      if (seen) fire(at, 'became-visible', true);
+      fire(at, 'became-visible', true);
     }
     document.addEventListener('visibilitychange', onVisibilityChange);
     return () => document.removeEventListener('visibilitychange', onVisibilityChange);
-  }, [fire]);
+  }, [fire, setRecord]);
 
   useWakeLock(shouldHoldWakeLock(record, now, visible));
 
