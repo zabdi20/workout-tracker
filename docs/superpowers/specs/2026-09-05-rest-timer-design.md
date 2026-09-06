@@ -77,9 +77,14 @@ export const STALE_OVERRUN_SECONDS = 30 * 60;
 export function isStaleRestTimer(record: RestTimerRecord, now: number): boolean;
 ```
 
-Applied when the record is loaded: a stale record is cleared and reported absent, exactly
-like a mismatched `sessionId`. Thirty minutes is the longest gap that could still
-plausibly be one rest.
+Applied when the record is loaded, and re-applied on every return to visibility, not only
+then. A page that survives the whole background stretch — the other half of the iOS
+resume coin from a cold reload — never re-runs the load effect, so checking staleness
+only there would let a rest abandoned mid-visit sit forever as exactly the
+`Rest done — 743:12 over` banner this rule exists to prevent, while the 500 ms display
+tick keeps re-rendering the session screen for as long as it stays open. Both checks
+clear and report absent the same way; neither ever suppresses-and-keeps a stale record.
+Thirty minutes is the longest gap that could still plausibly be one rest.
 
 ### The countdown is a pure function of the deadline and the clock
 
@@ -141,6 +146,15 @@ Muting is applied at the speaker, not in the state machine: `Settings.restAlertS
 decides whether `'play'` reaches `playRestTone()`, and the record is marked fired either
 way. A silenced timer and an audible one advance through identical states, so the
 setting cannot introduce a timing bug.
+
+Adopting a stored record whose deadline has already passed is treated exactly like
+returning from the background: the load effect calls the same `'became-visible'` path
+the visibility listener does, so the tone is suppressed rather than played. This is not
+an edge case — an installed iOS PWA frequently cold-reloads on resume rather than merely
+suspending, and a cold reload loads the document already visible, with no
+`visibilitychange` event to run the suppression on its own. Without this, the first
+500 ms tick after mount would see an unfired, overdue record with the document visible
+and play the tone up to `STALE_OVERRUN_SECONDS` late.
 
 ### Wake Lock is held exactly while counting down and visible
 
@@ -348,6 +362,26 @@ is load-bearing here: *start a session, log a set, background Safari for a few m
 reopen — the logged set survives and the planned rows resume.* Run it before this plan
 executes. If a backgrounded session does not survive today, the timer's resume behaviour
 is being built on an assumption nobody has tested.
+
+## Known limitation: in-app navigation is a background event too, and is not handled
+
+`useRestTimer` is called from `ActiveSessionScreen`, so its state — the interval, the
+`visibilitychange` listener, the wake lock — lives and dies with that component.
+Navigating to another tab in the app's own nav bar unmounts the screen. The interval
+stops, the tone never fires no matter how long rest has been running, and the wake lock
+releases. Nothing is cleared, so nothing looks broken while it happens: the record sits
+untouched in localStorage until `ActiveSessionScreen` mounts again, at which point the
+load effect finds a deadline in the past and takes the cold-reload path above.
+
+This plan's entire background story — the spike, no late beep, staleness re-evaluated on
+resume — treats leaving the browser or the OS suspending the tab as the case to handle.
+In-app routing produces the identical suspension of the interval and the tone by a
+different mechanism, and it was not considered when that story was designed.
+
+Hoisting `useRestTimer` above the router's `<Outlet />` would fix it: the hook would then
+survive a route change the same way it survives nothing today. That changes where the
+record lives relative to the component tree and what remounts when, which is more than
+this plan's wiring change, so it is deliberately left for a later plan.
 
 ## Out of scope
 
