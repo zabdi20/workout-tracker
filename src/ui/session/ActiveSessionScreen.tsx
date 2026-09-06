@@ -10,6 +10,8 @@ import { useWriteError } from '../useWriteError';
 import { formatDuration, formatSet, measurementFields } from '../../domain/measurement';
 import { planSets } from '../../domain/setPlan';
 import { ExerciseBrowser } from '../library/ExerciseBrowser';
+import { LoggedSetList } from './LoggedSetList';
+import { PlannedSetRow } from './PlannedSetRow';
 import type { LoggedSet, RoutineItem } from '../../db/types';
 
 export function ActiveSessionScreen() {
@@ -335,69 +337,31 @@ export function ActiveSessionScreen() {
               .join(' · ')}`}
       </p>
 
-      <ol className="logged-sets">
-        {logged.map((set, index) => (
-          <li key={set.id}>
-            <span>
-              {index + 1}. {formatSet(set, exercise.measurementType)}
-              {set.setType === 'warmup' && ' (warm-up)'}
-            </span>
-            <button
-              type="button"
-              aria-label={`Remove logged set ${index + 1}`}
-              onClick={() => run(() => deleteSet(set.id))}
-            >
-              Remove
-            </button>
-          </li>
-        ))}
-      </ol>
+      <LoggedSetList
+        sets={logged}
+        measurementType={exercise.measurementType}
+        onRemove={(setId) => run(() => deleteSet(setId))}
+      />
 
       <ol className="planned-sets">
         {planned.map((row) => (
-          <li key={row.position}>
-            {fields.map((field) => (
-              <label key={field.property}>
-                {field.label}
-                {field.unitBearing ? ` (${row.unit})` : ''}
-                <input
-                  type="number"
-                  aria-label={`${field.label} for set ${row.position}`}
-                  value={valueFor(row, field.property, row[field.property])}
-                  onChange={(e) =>
-                    setDrafts((d) => ({
-                      ...d,
-                      [draftKey(row.position, field.property)]: e.target.value,
-                    }))
-                  }
-                />
-              </label>
-            ))}
-
-            <label>
-              Warm-up
-              <input
-                type="checkbox"
-                aria-label={`Mark set ${row.position} as a warm-up`}
-                checked={warmup[`${focused}:${row.position}`] ?? false}
-                onChange={(e) =>
-                  setWarmup((w) => ({ ...w, [`${focused}:${row.position}`]: e.target.checked }))
-                }
-              />
-            </label>
-
-            <button
-              type="button"
-              // Disabled while its own write is in flight. Two fast taps
-              // would otherwise log the set twice; logSet's transactional
-              // order assignment keeps them distinct, but the second set is
-              // still one the user did not perform.
-              disabled={busy === `${focused}:${row.position}`}
-              onClick={() => void confirmSet(row)}
-            >
-              Log set {row.position}
-            </button>
-          </li>
+          <PlannedSetRow
+            key={row.position}
+            row={row}
+            fields={fields}
+            // Bound to this row here, so the row component never needs to
+            // know how prefill and drafts are layered.
+            valueFor={(property) => valueFor(row, property, row[property])}
+            onFieldChange={(property, value) =>
+              setDrafts((d) => ({ ...d, [draftKey(row.position, property)]: value }))
+            }
+            isWarmup={warmup[`${focused}:${row.position}`] ?? false}
+            onWarmupChange={(checked) =>
+              setWarmup((w) => ({ ...w, [`${focused}:${row.position}`]: checked }))
+            }
+            busy={busy === `${focused}:${row.position}`}
+            onConfirm={() => void confirmSet(row)}
+          />
         ))}
       </ol>
 
