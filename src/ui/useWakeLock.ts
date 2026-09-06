@@ -30,7 +30,10 @@ export function useWakeLock(shouldHold: boolean): void {
     }
 
     async function acquire() {
-      if (sentinelRef.current) return;
+      // No dedup guard here: this only runs when the effect (re)runs, which
+      // only happens when `shouldHold` changes, and cleanup always nulls
+      // sentinelRef before the next run. A ref-based "already holding one"
+      // check would be unreachable dead code.
       try {
         const sentinel = await navigator.wakeLock?.request('screen');
         if (!sentinel) return;
@@ -42,8 +45,8 @@ export function useWakeLock(shouldHold: boolean): void {
         }
         sentinelRef.current = sentinel;
         // The browser drops the lock on its own when the document hides.
-        // Without this the ref would keep a dead sentinel and the next
-        // acquire would be skipped as redundant.
+        // Without this the ref would still hold the dead sentinel, and the
+        // next cleanup would call release() on it again for no reason.
         sentinel.addEventListener('release', () => {
           sentinelRef.current = null;
         });

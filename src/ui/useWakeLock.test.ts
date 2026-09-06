@@ -54,7 +54,12 @@ it('releases on unmount, so a lock cannot outlive the screen', async () => {
   await vi.waitFor(() => expect(sentinel.release).toHaveBeenCalled());
 });
 
-it('does not acquire a second lock while it already holds one', async () => {
+it('does not request the lock again while the boolean prop is unchanged', async () => {
+  // This pins React's own dependency-array behavior, not an internal dedup
+  // guard: the effect only reruns when `shouldHold` changes (Object.is), so
+  // rerendering with the same `true` value never re-invokes acquire(). The
+  // hook has no ref-based "already holding one" check — see useWakeLock.ts
+  // for why one would be unreachable dead code.
   const { request } = stubWakeLock();
   const { rerender } = renderHook(({ hold }) => useWakeLock(hold), {
     initialProps: { hold: true },
@@ -66,11 +71,12 @@ it('does not acquire a second lock while it already holds one', async () => {
   expect(request).toHaveBeenCalledTimes(1);
 });
 
-it('can acquire again after the browser released the lock itself', async () => {
-  // iOS drops the lock whenever the document hides and never restores it.
-  // Without clearing the stored sentinel, the next acquire would be skipped
-  // because the hook still believed it held one.
-  const { request, fireRelease } = stubWakeLock();
+it('does not re-release a lock the browser already released', async () => {
+  // iOS drops the lock on its own whenever the document hides. The 'release'
+  // listener clears the stored sentinel so that when the condition later
+  // turns false, cleanup does not call release() again on a sentinel the
+  // browser has already let go of.
+  const { request, sentinel, fireRelease } = stubWakeLock();
   const { rerender } = renderHook(({ hold }) => useWakeLock(hold), {
     initialProps: { hold: true },
   });
@@ -78,8 +84,8 @@ it('can acquire again after the browser released the lock itself', async () => {
 
   fireRelease();
   rerender({ hold: false });
-  rerender({ hold: true });
-  await vi.waitFor(() => expect(request).toHaveBeenCalledTimes(2));
+
+  expect(sentinel.release).not.toHaveBeenCalled();
 });
 
 it('does nothing when the browser has no Wake Lock API', () => {
