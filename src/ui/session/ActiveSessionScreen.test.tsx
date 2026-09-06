@@ -7,6 +7,7 @@ import { createRoutine, setRoutineItems } from '../../db/routines';
 import { startSession } from '../../db/sessions';
 import { listSetsForSession, logSet } from '../../db/sets';
 import { ActiveSessionScreen } from './ActiveSessionScreen';
+import { REST_TIMER_KEY } from './restTimerStore';
 
 // Only logSet is overridden, and only for the one test that needs it to
 // reject — every other test (including the ones that call logSet directly
@@ -21,6 +22,8 @@ vi.mock('../../db/sets', async (importOriginal) => {
 
 beforeEach(async () => {
   await resetDbForTests();
+  // The rest timer lives in localStorage, which jsdom keeps between tests.
+  localStorage.clear();
 });
 
 function renderScreen() {
@@ -604,4 +607,74 @@ it('takes the logged sets with a discarded session', async () => {
   await waitFor(async () => {
     expect(await listSetsForSession(session.id)).toHaveLength(0);
   });
+});
+
+it('starts rest when a set is confirmed', async () => {
+  const user = userEvent.setup();
+  const { routine } = await benchRoutine('Push A', 2);
+  await startSession(routine);
+
+  renderScreen();
+
+  await user.type(await screen.findByLabelText(/weight for set 1/i), '135');
+  await user.type(screen.getByLabelText(/reps for set 1/i), '8');
+  await user.click(screen.getByRole('button', { name: /log set 1/i }));
+
+  // Asserted through the banner's own control rather than its text: the
+  // static prescription line already renders a "Rest 1:30" of its own.
+  expect(await screen.findByRole('button', { name: /skip rest/i })).toBeInTheDocument();
+});
+
+it('does not start rest when the set failed to save', async () => {
+  // The timer hangs off the same success flag the drafts do. Starting it
+  // regardless would tell the user a set was logged when it was not.
+  const user = userEvent.setup();
+  const { routine } = await benchRoutine('Push A', 2);
+  await startSession(routine);
+  vi.mocked(logSet).mockRejectedValueOnce(new Error('quota exceeded'));
+
+  renderScreen();
+
+  await user.type(await screen.findByLabelText(/weight for set 1/i), '135');
+  await user.type(screen.getByLabelText(/reps for set 1/i), '8');
+  await user.click(screen.getByRole('button', { name: /log set 1/i }));
+
+  expect(await screen.findByRole('alert')).toHaveTextContent(/quota exceeded/i);
+  expect(screen.queryByRole('button', { name: /skip rest/i })).not.toBeInTheDocument();
+});
+
+it('takes the banner away when rest is skipped', async () => {
+  const user = userEvent.setup();
+  const { routine } = await benchRoutine('Push A', 2);
+  await startSession(routine);
+
+  renderScreen();
+
+  await user.type(await screen.findByLabelText(/weight for set 1/i), '135');
+  await user.type(screen.getByLabelText(/reps for set 1/i), '8');
+  await user.click(screen.getByRole('button', { name: /log set 1/i }));
+  await user.click(await screen.findByRole('button', { name: /skip rest/i }));
+
+  expect(screen.queryByRole('button', { name: /skip rest/i })).not.toBeInTheDocument();
+  expect(localStorage.getItem(REST_TIMER_KEY)).toBeNull();
+});
+
+it('clears a running rest when the workout is finished', async () => {
+  // Otherwise the record outlives its session and the next workout inherits
+  // a countdown from the last one.
+  const user = userEvent.setup();
+  const { routine } = await benchRoutine('Push A', 1);
+  await startSession(routine);
+
+  renderScreen();
+
+  await user.type(await screen.findByLabelText(/weight for set 1/i), '135');
+  await user.type(screen.getByLabelText(/reps for set 1/i), '8');
+  await user.click(screen.getByRole('button', { name: /log set 1/i }));
+  await screen.findByRole('button', { name: /skip rest/i });
+
+  await user.click(screen.getByRole('button', { name: /finish workout/i }));
+
+  expect(await screen.findByText('Today screen')).toBeInTheDocument();
+  expect(localStorage.getItem(REST_TIMER_KEY)).toBeNull();
 });

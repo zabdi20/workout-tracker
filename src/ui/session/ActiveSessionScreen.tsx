@@ -12,6 +12,9 @@ import { planSets } from '../../domain/setPlan';
 import { ExerciseBrowser } from '../library/ExerciseBrowser';
 import { LoggedSetList } from './LoggedSetList';
 import { PlannedSetRow } from './PlannedSetRow';
+import { RestBanner } from './RestBanner';
+import { useRestTimer } from './useRestTimer';
+import { unlockRestTone } from './restTone';
 import type { LoggedSet, RoutineItem } from '../../db/types';
 
 export function ActiveSessionScreen() {
@@ -86,6 +89,16 @@ export function ActiveSessionScreen() {
     // re-query does not flash the loading state.
   }, [added]);
 
+  // Called above the early returns because hooks must run in the same order
+  // on every render, and this screen returns early for both the loading and
+  // the no-session states. Reading through `data?.` is what lets it live
+  // here; moving it below the guards breaks on the loading-to-loaded
+  // transition.
+  const timer = useRestTimer(
+    data?.session.id ?? null,
+    data?.settings.restAlertSound ?? true,
+  );
+
   if (data === undefined) return <p>Loading…</p>;
   if (data === null) return <Navigate to="/" replace />;
 
@@ -118,7 +131,10 @@ export function ActiveSessionScreen() {
     // Gated on the local flag, not run unconditionally: a failed finish must
     // leave the user on this screen with their session still open, not send
     // them to Today believing it completed.
-    if (done) navigate('/');
+    if (done) {
+      timer.clear();
+      navigate('/');
+    }
   }
 
   async function discard() {
@@ -127,8 +143,17 @@ export function ActiveSessionScreen() {
       await discardSession(session.id);
       done = true;
     });
-    if (done) navigate('/');
+    if (done) {
+      timer.clear();
+      navigate('/');
+    }
   }
+
+  // Declared here and rendered by every return path below, for the same
+  // reason sessionControls is: a control present in one branch and absent
+  // from another rots, and the branch nobody notices is broken is the one
+  // that behaves differently.
+  const restBanner = timer.view && <RestBanner view={timer.view} onSkip={timer.clear} />;
 
   // Declared above the early returns and rendered by every path below, in
   // one copy rather than three. The empty-exercise-list path is why: a
@@ -179,6 +204,7 @@ export function ActiveSessionScreen() {
       <section>
         <h2>{session.name}</h2>
         {error && <p role="alert">{error}</p>}
+        {restBanner}
         <p className="empty">This routine has no exercises.</p>
         {sessionControls}
       </section>
@@ -197,6 +223,7 @@ export function ActiveSessionScreen() {
       <section>
         <h2>{session.name}</h2>
         {error && <p role="alert">{error}</p>}
+        {restBanner}
         <p>That exercise is no longer in the library.</p>
         {sessionControls}
       </section>
@@ -233,6 +260,12 @@ export function ActiveSessionScreen() {
   // loses the narrowing, since the checker can't rule out it being called
   // from somewhere before the guard ran.
   const confirmSet = async (row: (typeof planned)[number]) => {
+    // First, before any await: iOS unlocks audio only inside a user gesture,
+    // and after an await this handler is no longer running in one. Getting
+    // this wrong produces a timer that is silent on the first rest of every
+    // launch and audible forever after.
+    unlockRestTone();
+
     const key = `${focused}:${row.position}`;
     if (busy === key) return;
     setBusy(key);
@@ -291,6 +324,9 @@ export function ActiveSessionScreen() {
         const { [key]: _cleared, ...rest } = w;
         return rest;
       });
+      // Gated on the same flag the drafts are: rest begins when a set was
+      // actually performed and stored, never when the write failed.
+      timer.start(restSeconds);
     }
     // Clears on both outcomes: only gating this too would leave a failed
     // row's confirm button disabled forever, trading a recoverable error
@@ -302,6 +338,7 @@ export function ActiveSessionScreen() {
     <section>
       <h2>{session.name}</h2>
       {error && <p role="alert">{error}</p>}
+      {restBanner}
 
       <nav aria-label="Exercises in this session">
         {exerciseIds.map((id) => (
