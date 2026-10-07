@@ -1,0 +1,267 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<title>Rest tone diagnostic</title>
+<!--
+  TEMPORARY DIAGNOSTIC — delete once the rest-tone bug is understood.
+
+  The shipped rest tone (src/ui/session/restTone.ts) is silent on the user's
+  iPhone when a countdown reaches zero with the app in front, ringer on, and
+  the banner correctly flipping to "Rest done". So the state machine fired
+  'play' and the failure is in the audio layer. Every variant below changes
+  exactly one thing relative to what shipped, and logs the AudioContext's
+  state at the tap, during the wait, and at fire time, so one run on the
+  device says where the chain breaks.
+
+  Audio objects are built lazily on the tap, never at page load, for the
+  reason spike/audio-reach.html records: otherwise opening the page and
+  running a test cannot be told apart.
+-->
+<style>
+  body { font: 16px -apple-system, system-ui, sans-serif; margin: 0; padding: 16px;
+         background: #111; color: #eee; }
+  h1 { font-size: 20px; margin: 0 0 8px; }
+  .hint { color: #aaa; font-size: 14px; margin: 6px 0; }
+  button, select { font-size: 17px; width: 100%; margin: 5px 0; border: 0;
+                   border-radius: 10px; padding: 13px 14px; }
+  button { background: #2d6cdf; color: #fff; text-align: left; }
+  button.secondary { background: #444; }
+  button:disabled { opacity: 0.4; }
+  #count { font-size: 48px; font-weight: 700; text-align: center; margin: 10px 0; }
+  #log { white-space: pre-wrap; font: 12px ui-monospace, monospace; background: #000;
+         padding: 10px; border-radius: 8px; margin-top: 12px; min-height: 4em; }
+</style>
+</head>
+<body>
+<h1>Rest tone diagnostic</h1>
+<p class="hint">Ringer ON, media volume up. Run <b>one test per page load</b> — reload
+between tests, because an earlier unlock can make a later test pass by accident.
+After tapping, <b>don't touch the screen</b> until the tone is due: a touch is a
+gesture and would contaminate the result.</p>
+
+<label class="hint">Delay before the tone
+  <select id="delay">
+    <option value="10">10 s</option>
+    <option value="30">30 s</option>
+    <option value="90" selected>90 s — the real default rest</option>
+  </select>
+</label>
+
+<div id="count">--</div>
+
+<button id="w0">W0 · Web Audio tone NOW — does it make sound at all?</button>
+<button id="w1">W1 · Web Audio, resume() only — exactly what shipped</button>
+<button id="w2">W2 · Web Audio, resume() + silent buffer started in the tap</button>
+<button id="e1">E1 · &lt;audio&gt; element primed in the tap — the spike's method</button>
+<button id="copy" class="secondary">Copy log</button>
+<pre id="log"></pre>
+
+<script>
+const logEl = document.getElementById('log');
+const countEl = document.getElementById('count');
+const t0 = performance.now();
+
+function log(msg) {
+  const s = ((performance.now() - t0) / 1000).toFixed(1).padStart(6);
+  logEl.textContent += `[${s}s] ${msg}\n`;
+}
+
+function ctxInfo(ctx) {
+  return `state=${ctx.state} currentTime=${ctx.currentTime.toFixed(2)}`;
+}
+
+function sessionType() {
+  return 'audioSession' in navigator ? navigator.audioSession.type : 'n/a';
+}
+
+function newContext() {
+  const Ctor = window.AudioContext || window.webkitAudioContext;
+  if (!Ctor) { log('NO AudioContext constructor'); return null; }
+  return new Ctor();
+}
+
+// Identical to playRestTone() in src/ui/session/restTone.ts.
+function blips(ctx) {
+  const startedAt = ctx.currentTime;
+  for (const blip of [{ at: startedAt, hz: 880 }, { at: startedAt + 0.18, hz: 1174 }]) {
+    const osc = ctx.createOscillator();
+    const gain = ctx.createGain();
+    osc.type = 'sine';
+    osc.frequency.value = blip.hz;
+    gain.gain.setValueAtTime(0.0001, blip.at);
+    gain.gain.exponentialRampToValueAtTime(0.3, blip.at + 0.01);
+    gain.gain.exponentialRampToValueAtTime(0.0001, blip.at + 0.12);
+    osc.connect(gain).connect(ctx.destination);
+    osc.start(blip.at);
+    osc.stop(blip.at + 0.14);
+  }
+}
+
+// 8-bit mono WAV, as in spike/audio-reach.html — the format proven on device.
+function toneWavUrl(freq, seconds) {
+  const rate = 8000, n = Math.floor(rate * seconds);
+  const buf = new ArrayBuffer(44 + n), v = new DataView(buf);
+  const w = (o, s) => { for (let i = 0; i < s.length; i++) v.setUint8(o + i, s.charCodeAt(i)); };
+  w(0, 'RIFF'); v.setUint32(4, 36 + n, true); w(8, 'WAVE'); w(12, 'fmt ');
+  v.setUint32(16, 16, true); v.setUint16(20, 1, true); v.setUint16(22, 1, true);
+  v.setUint32(24, rate, true); v.setUint32(28, rate, true);
+  v.setUint16(32, 1, true); v.setUint16(34, 8, true); w(36, 'data'); v.setUint32(40, n, true);
+  for (let i = 0; i < n; i++) {
+    const t = i / rate, env = Math.min(1, t * 20, (seconds - t) * 20);
+    v.setUint8(44 + i, Math.max(0, Math.min(255, Math.round(128 + Math.sin(2 * Math.PI * freq * t) * env * 100))));
+  }
+  return URL.createObjectURL(new Blob([buf], { type: 'audio/wav' }));
+}
+
+let ran = false;
+let wakeLock = null;
+
+function begin(name) {
+  if (ran) log('WARNING: second test without a reload — this result is contaminated');
+  ran = true;
+  for (const id of ['w0', 'w1', 'w2', 'e1']) document.getElementById(id).disabled = true;
+  logEl.textContent = '';
+  log(`TEST ${name}`);
+  log(`UA: ${navigator.userAgent}`);
+  log(`standalone=${navigator.standalone === true} audioSession.type=${sessionType()}`);
+  // Hold the screen on, as the real app does during rest, so the document
+  // stays visible and the result is not confounded by an auto-lock.
+  if (navigator.wakeLock) {
+    navigator.wakeLock.request('screen')
+      .then((s) => { wakeLock = s; log('wake lock acquired'); })
+      .catch((e) => log(`wake lock FAILED: ${e.name} ${e.message}`));
+  } else {
+    log('no Wake Lock API');
+  }
+}
+
+function countdown(seconds, onZero, onEvery10s) {
+  const end = Date.now() + seconds * 1000;
+  let lastTen = -1;
+  const id = setInterval(() => {
+    const left = Math.max(0, Math.ceil((end - Date.now()) / 1000));
+    countEl.textContent = left;
+    const elapsed = Math.floor(seconds - left);
+    if (onEvery10s && elapsed > 0 && elapsed % 10 === 0 && elapsed !== lastTen) {
+      lastTen = elapsed;
+      onEvery10s();
+    }
+    if (left === 0) {
+      clearInterval(id);
+      onZero();
+    }
+  }, 250);
+}
+
+function delaySeconds() {
+  return Number(document.getElementById('delay').value);
+}
+
+// Shared by W1 and W2: first record exactly what the shipped code would have
+// done, THEN — clearly labelled — probe whether resuming outside a gesture
+// would rescue it. The probe runs after the shipped behaviour is recorded, so
+// it cannot contaminate that observation.
+function fireWebAudio(ctx) {
+  log(`ZERO: ${ctxInfo(ctx)} visibility=${document.visibilityState} audioSession.type=${sessionType()}`);
+  if (ctx.state === 'running') {
+    log('shipped code would PLAY here — playing now. Did you hear two blips?');
+    try { blips(ctx); log('blips scheduled'); } catch (e) { log(`blips THREW: ${e.message}`); }
+    return;
+  }
+  log(`shipped code would SKIP here (state=${ctx.state}) — this alone explains silence`);
+  log('PROBE: trying resume() outside a gesture…');
+  ctx.resume()
+    .then(() => {
+      log(`PROBE: resume resolved, ${ctxInfo(ctx)}`);
+      if (ctx.state === 'running') { blips(ctx); log('PROBE: blips scheduled. Did you hear them?'); }
+    })
+    .catch((e) => log(`PROBE: resume REJECTED: ${e.name} ${e.message}`));
+}
+
+function runWebAudio(name, withSilentBuffer) {
+  begin(name);
+  const ctx = newContext();
+  if (!ctx) return;
+  log(`created: ${ctxInfo(ctx)}`);
+  ctx.onstatechange = () => log(`statechange -> ${ctxInfo(ctx)}`);
+  if (ctx.state === 'suspended') {
+    ctx.resume()
+      .then(() => log(`resume resolved: ${ctxInfo(ctx)}`))
+      .catch((e) => log(`resume REJECTED: ${e.name} ${e.message}`));
+  }
+  if (withSilentBuffer) {
+    try {
+      const buf = ctx.createBuffer(1, 1, 22050);
+      const src = ctx.createBufferSource();
+      src.buffer = buf;
+      src.connect(ctx.destination);
+      src.start(0);
+      log('silent 1-sample buffer started inside the tap');
+    } catch (e) {
+      log(`silent buffer THREW: ${e.message}`);
+    }
+  }
+  log(`end of tap handler: ${ctxInfo(ctx)}`);
+  const secs = delaySeconds();
+  log(`waiting ${secs}s — don't touch the screen`);
+  countdown(secs, () => fireWebAudio(ctx), () => log(`  waiting: ${ctxInfo(ctx)} visibility=${document.visibilityState}`));
+}
+
+document.getElementById('w0').onclick = () => {
+  begin('W0 — Web Audio tone now');
+  const ctx = newContext();
+  if (!ctx) return;
+  log(`created: ${ctxInfo(ctx)}`);
+  ctx.onstatechange = () => log(`statechange -> ${ctxInfo(ctx)}`);
+  const go = () => { blips(ctx); log(`blips scheduled at ${ctxInfo(ctx)}. Did you hear two blips?`); };
+  if (ctx.state === 'suspended') {
+    ctx.resume().then(() => { log(`resume resolved: ${ctxInfo(ctx)}`); go(); })
+      .catch((e) => log(`resume REJECTED: ${e.name} ${e.message}`));
+  } else {
+    go();
+  }
+};
+
+document.getElementById('w1').onclick = () => runWebAudio('W1 — resume() only (shipped)', false);
+document.getElementById('w2').onclick = () => runWebAudio('W2 — resume() + silent buffer', true);
+
+document.getElementById('e1').onclick = () => {
+  begin('E1 — <audio> primed in the tap');
+  const el = new Audio(toneWavUrl(880, 1.2));
+  // Must start inside the gesture: iOS only permits a later programmatic
+  // play() on an element a gesture has already started. The spike's method
+  // note records that skipping this produced a NotAllowedError that looked
+  // like a platform verdict.
+  el.play()
+    .then(() => { el.pause(); el.currentTime = 0; log('element primed OK'); })
+    .catch((e) => log(`prime FAILED: ${e.name} ${e.message}`));
+  const secs = delaySeconds();
+  log(`waiting ${secs}s — don't touch the screen`);
+  countdown(secs, () => {
+    log(`ZERO: visibility=${document.visibilityState} audioSession.type=${sessionType()}`);
+    el.play()
+      .then(() => log('element play RESOLVED. Did you hear a beep?'))
+      .catch((e) => log(`element play REJECTED: ${e.name} ${e.message}`));
+  }, () => log(`  waiting: visibility=${document.visibilityState}`));
+};
+
+document.addEventListener('visibilitychange', () => log(`visibility -> ${document.visibilityState}`));
+
+document.getElementById('copy').onclick = async () => {
+  try {
+    await navigator.clipboard.writeText(logEl.textContent);
+    log('--- log copied to clipboard ---');
+  } catch (e) {
+    const range = document.createRange();
+    range.selectNodeContents(logEl);
+    const sel = window.getSelection();
+    sel.removeAllRanges();
+    sel.addRange(range);
+    log('--- clipboard blocked; log is selected, long-press to Copy ---');
+  }
+};
+</script>
+</body>
+</html>
