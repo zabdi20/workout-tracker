@@ -173,7 +173,12 @@ it('keeps what was typed when saving a set fails', async () => {
   await user.type(within(form).getByLabelText(/reps/i), '9');
   await user.click(within(form).getByRole('button', { name: 'Save' }));
   expect(await screen.findByRole('alert')).toHaveTextContent(/quota exceeded/i);
-  expect(within(form).getByLabelText(/reps/i)).toHaveValue(9);
+  // Re-queried from the live document, not through `form` from before Save:
+  // React detaches an unmounted subtree intact, so that node would still hold
+  // the typed 9 even if the form had closed on failure.
+  expect(
+    within(screen.getByRole('form', { name: 'Edit Barbell Bench Press set 1' })).getByLabelText(/reps/i),
+  ).toHaveValue(9);
 });
 
 it('deletes a set', async () => {
@@ -225,7 +230,11 @@ it('keeps a forgotten set\'s values when saving it fails', async () => {
   await user.type(within(form).getByLabelText(/reps/i), '2');
   await user.click(within(form).getByRole('button', { name: 'Save' }));
   expect(await screen.findByRole('alert')).toHaveTextContent(/quota exceeded/i);
-  expect(within(form).getByLabelText(/reps/i)).toHaveValue(2);
+  // Re-queried from the live document for the same reason as the edit case
+  // above: a detached form would still hold the typed 2.
+  expect(
+    within(screen.getByRole('form', { name: 'Add a set to Barbell Bench Press' })).getByLabelText(/reps/i),
+  ).toHaveValue(2);
 });
 
 it('re-evaluates later badges when an earlier set is edited', async () => {
