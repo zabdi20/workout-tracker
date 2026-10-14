@@ -508,7 +508,7 @@ Expected: FAIL. The new functions don't exist yet, and `does not re-stamp…` fa
 - Produces:
   - `src/testFixtures.ts` — **test-only**, imported by every later UI test:
     - `seedExercise(name?: string, measurementType?: MeasurementType): Promise<Exercise>` — via `createCustomExercise`; defaults `'Barbell Bench Press'`, `'weight_reps'`
-    - `interface SeedSet { exerciseId: string; completedAt: number; weight?: number; reps?: number; unit?: WeightUnit; setType?: SetType; durationSeconds?: number }`
+    - `interface SeedSet { exerciseId: string; completedAt: number; weight?: number; reps?: number; unit?: WeightUnit; setType?: SetType; durationSeconds?: number; order?: number }` — `order`, when given, overrides the positional default
     - `seedWorkout(w: { name?: string; startedAt: number; endedAt?: number | null; status?: SessionStatus; sets?: SeedSet[] }): Promise<Session>` — writes straight to the tables. Defaults: `name` `'Push A'`, `status` `'completed'`, `endedAt` = `startedAt + 3_600_000` (`null` omits it), set `unit` `'lb'`, `setType` `'working'`, and `order` = the set's position among the input's sets for the same exercise.
     - `const T = Date.UTC(2025, 0, 6, 17, 0)`, `MIN = 60_000`, `DAY = 86_400_000`
   - `PrBadge({ kinds }: { kinds: PrKind[] })` — renders `<span className="pr-badge">` with the text `PR: ` followed by labels joined with `, `. The labels: `heaviest` → `heaviest`; `e1rm` → `est. 1RM`; `reps` → `rep best`.
@@ -525,7 +525,7 @@ It runs `detectAllPrs` over the union of those exercise histories. It renders:
 - `<h2>` with the session name;
 - a `<p>` with the start time (`toLocaleString()`) and the duration;
 - per exercise, in order of its earliest set's `completedAt`, an `<h3>` with the exercise name, followed by ` (archived)` when archived;
-- an `<ol>` of its sets as `` `${n}. ${formatSet(set, type)}` ``, followed by ` (warm-up)` for warm-ups, and then a `PrBadge` when the set earned kinds.
+- an `<ol>` of its sets as `` `${n}. ${formatSet(set, type)}` ``, followed by ` (warm-up)` for warm-ups, and then a `PrBadge` when the set earned kinds. **The number, the `formatSet` text and the warm-up marker go inside one `<span>`, with the `PrBadge` as its sibling.** Task 5 adds Edit and Delete buttons to the same `<li>`, and this test file matches the set text exactly — text sitting directly in the `<li>` would silently break it then.
 
 It handles three special cases:
 - An unknown id renders `<p role="alert">Workout not found.</p>` and a link back to `/history`.
@@ -582,21 +582,25 @@ function renderAt(path: string) {
 }
 
 it('shows the workout, its exercises in the order trained, and their sets', async () => {
-  const bench = await seedExercise('Barbell Bench Press');
+  // Every plausible wrong ordering disagrees with the right one here:
+  // alphabetical, exercise creation order, seed-array order, and first
+  // appearance in listSetsForSession's (order, completedAt) sort. The bench's
+  // only set has order 1, as it would after its first set was deleted.
   const squat = await seedExercise('Back Squat');
+  const bench = await seedExercise('Barbell Bench Press');
   const w = await seedWorkout({
     startedAt: T,
     sets: [
-      { exerciseId: bench.id, weight: 185, reps: 8, completedAt: T + 10 * MIN },
-      { exerciseId: squat.id, weight: 315, reps: 5, completedAt: T + MIN },
-      { exerciseId: squat.id, weight: 315, reps: 4, setType: 'warmup', completedAt: T + 2 * MIN },
+      { exerciseId: squat.id, weight: 315, reps: 5, completedAt: T + 10 * MIN },
+      { exerciseId: squat.id, weight: 315, reps: 4, setType: 'warmup', completedAt: T + 11 * MIN },
+      { exerciseId: bench.id, weight: 185, reps: 8, order: 1, completedAt: T + MIN },
     ],
   });
   renderAt(`/history/${w.id}`);
   expect(await screen.findByRole('heading', { level: 2, name: 'Push A' })).toBeInTheDocument();
   expect(screen.getByText(new Date(T).toLocaleString(), { exact: false })).toBeInTheDocument();
   expect(screen.getAllByRole('heading', { level: 3 }).map((h) => h.textContent))
-    .toEqual(['Back Squat', 'Barbell Bench Press']);
+    .toEqual(['Barbell Bench Press', 'Back Squat']);
   expect(screen.getByText('1. 315 lb × 5')).toBeInTheDocument();
   expect(screen.getByText('2. 315 lb × 4 (warm-up)', { exact: false })).toBeInTheDocument();
 });
@@ -685,7 +689,7 @@ Later tasks extend this file's imports as their tests need them. Import nothing 
 
 **Screen contract.** One querier: `listCompletedSessions`, `listAllSets` and every exercise, archived included. It runs `detectAllPrs` once over all sets. It renders:
 - `<h2>History</h2>`;
-- an `<ol>` with one `<li>` per workout, keyed by id. Each holds a `<Link to={`/history/${id}`}>` whose text is the workout name, then the text `` `${toLocaleString(startedAt)} · ${duration} · ${n} sets` ``, where `n` counts working sets only;
+- an `<ol>` with one `<li>` per workout, keyed by id. Each holds a `<Link to={`/history/${id}`}>` whose text is the workout name, then the text `` `${toLocaleString(startedAt)} · ${duration} · ${n} sets` ``, where `n` counts working sets only — **singular `1 set` when `n` is 1**, pluralized the same way as the PR count;
 - the suffix `` ` · ${p} PR` `` or `` ` · ${p} PRs` ``, only when `p > 0`. `p` counts the workout's sets that earned any kind.
 
 With no workouts it shows `No finished workouts yet.`
@@ -696,12 +700,13 @@ With no workouts it shows `No finished workouts yet.`
 
 ```tsx
 it('lists finished workouts newest first, without the one in progress', async () => {
-  await seedWorkout({ name: 'Old', startedAt: T - 2 * DAY });
-  await seedWorkout({ name: 'New', startedAt: T });
+  // Names chosen so newest-first is neither alphabetical nor seed order.
+  await seedWorkout({ name: 'Aardvark', startedAt: T - 2 * DAY });
+  await seedWorkout({ name: 'Zebra', startedAt: T });
   await seedWorkout({ name: 'Live', startedAt: T + DAY, status: 'in_progress', endedAt: null });
   renderAt('/history');
-  await screen.findByRole('link', { name: 'New' });
-  expect(screen.getAllByRole('link').map((l) => l.textContent)).toEqual(['New', 'Old']);
+  await screen.findByRole('link', { name: 'Zebra' });
+  expect(screen.getAllByRole('link').map((l) => l.textContent)).toEqual(['Zebra', 'Aardvark']);
 });
 
 it('shows the date, duration, working-set count and PR count', async () => {
@@ -718,7 +723,10 @@ it('shows the date, duration, working-set count and PR count', async () => {
   renderAt('/history');
   const row = (await screen.findByRole('link', { name: 'Second' })).closest('li')!;
   expect(row).toHaveTextContent(`${new Date(T).toLocaleString()} · 75 min · 2 sets · 1 PR`);
-  expect((screen.getByRole('link', { name: 'First' }).closest('li'))).not.toHaveTextContent('PR');
+  const firstRow = screen.getByRole('link', { name: 'First' }).closest('li')!;
+  expect(firstRow).not.toHaveTextContent('PR');
+  // "1 sets" would pass a plain substring match on "1 set".
+  expect(firstRow.textContent).toMatch(/· 1 set(?!s)/);
 });
 
 it('shows a dash rather than NaN when a workout has no end time', async () => {
@@ -1061,7 +1069,7 @@ it('deletes the workout and returns to the list', async () => {
 
 **Files:**
 - Create: `src/ui/records/RecordsScreen.tsx`, `src/ui/records/RecordsScreen.test.tsx`
-- Modify: `src/App.tsx` (route `/exercises/:exerciseId/records`), `src/ui/history/PastWorkoutScreen.tsx` (+ test), `src/ui/library/LibraryScreen.tsx`, `src/ui/library/LibraryScreen.test.tsx`
+- Modify: `src/App.tsx` (route `/exercises/:exerciseId/records`), `src/ui/history/PastWorkoutScreen.tsx` (+ test), `src/ui/library/LibraryScreen.tsx`, `src/ui/library/LibraryScreen.test.tsx`, `src/domain/records.test.ts` (one test Task 1 lacked)
 
 **Interfaces:**
 - Consumes: Task 1 `exerciseRecords`; Task 2 `listSetsForExercise`; `getExercise`; `formatSet`.
@@ -1090,11 +1098,13 @@ it('deletes the workout and returns to the list', async () => {
 
 ```tsx
 it('shows the heaviest set, the best estimate and the rep bests', async () => {
+  // The heavier rep best is logged LAST, so heaviest-first is neither
+  // chronological nor alphabetical.
   const bench = await seedExercise();
   await seedWorkout({ startedAt: T, sets: [
     { exerciseId: bench.id, weight: 225, reps: 5, completedAt: T + MIN },
-    { exerciseId: bench.id, weight: 235, reps: 3, completedAt: T + 2 * MIN },
-    { exerciseId: bench.id, weight: 225, reps: 6, completedAt: T + 3 * MIN },
+    { exerciseId: bench.id, weight: 225, reps: 6, completedAt: T + 2 * MIN },
+    { exerciseId: bench.id, weight: 235, reps: 3, completedAt: T + 3 * MIN },
   ] });
   renderAt(`/exercises/${bench.id}/records`);
   expect(await screen.findByText('Heaviest: 235 lb × 3', { exact: false })).toBeInTheDocument();
@@ -1103,15 +1113,19 @@ it('shows the heaviest set, the best estimate and the rep bests', async () => {
     .toEqual(['235 lb × 3', '225 lb × 6']);
 });
 
-it('lists different units as separate rep bests', async () => {
+it('lists different units as separate rep bests, ordered by real weight', async () => {
+  // 100 kg and 100 lb stay separate rows. Kilogram order (100 kg, 60 kg,
+  // 100 lb) differs from raw-number order, alphabetical order and
+  // chronological order, so only a real conversion produces it.
   const bench = await seedExercise();
   await seedWorkout({ startedAt: T, sets: [
-    { exerciseId: bench.id, unit: 'kg', weight: 100, reps: 5, completedAt: T + MIN },
-    { exerciseId: bench.id, unit: 'lb', weight: 100, reps: 8, completedAt: T + 2 * MIN },
+    { exerciseId: bench.id, unit: 'lb', weight: 100, reps: 8, completedAt: T + MIN },
+    { exerciseId: bench.id, unit: 'kg', weight: 60, reps: 5, completedAt: T + 2 * MIN },
+    { exerciseId: bench.id, unit: 'kg', weight: 100, reps: 3, completedAt: T + 3 * MIN },
   ] });
   renderAt(`/exercises/${bench.id}/records`);
   const rows = within(await screen.findByRole('list', { name: 'Rep bests' })).getAllByRole('listitem');
-  expect(rows.map((li) => li.textContent?.split(' · ')[0])).toEqual(['100 kg × 5', '100 lb × 8']);
+  expect(rows.map((li) => li.textContent?.split(' · ')[0])).toEqual(['100 kg × 3', '60 kg × 5', '100 lb × 8']);
 });
 
 it('says records are kept for weight-and-reps exercises only', async () => {
@@ -1131,6 +1145,19 @@ it('says so when the exercise is not found', async () => {
   expect(await screen.findByRole('alert')).toHaveTextContent('Exercise not found.');
 });
 ```
+
+Add to `src/domain/records.test.ts`, inside `describe('exerciseRecords')`. Task 1's rep-best tests logged their sets in heaviest-first order, so a chronological sort passed them:
+
+```ts
+it('lists rep bests heaviest first, not in the order they were set', () => {
+  const light = set({ weight: 185, reps: 10, completedAt: 1 });
+  const mid = set({ weight: 225, reps: 6, completedAt: 2 });
+  const heavy = set({ weight: 235, reps: 3, completedAt: 3 });
+  expect(exerciseRecords([light, mid, heavy]).repBests.map((s) => s.id)).toEqual([heavy.id, mid.id, light.id]);
+});
+```
+
+This test passes against Task 1's code, because the sort is already right. Prove it has teeth: replace the rep-best sort with a chronological one, confirm the test fails, then restore.
 
 Add to `PastWorkoutScreen.test.tsx`:
 
