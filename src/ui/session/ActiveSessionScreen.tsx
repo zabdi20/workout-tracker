@@ -7,7 +7,9 @@ import { listExercises } from '../../db/exercises';
 import { getSettings } from '../../db/settings';
 import { deleteSet, lastPerformance, listSetsForSession, logSet } from '../../db/sets';
 import { useWriteError } from '../useWriteError';
-import { formatDuration, formatSet, measurementFields } from '../../domain/measurement';
+import {
+  formatDuration, formatSet, measurementFields, parseSetFields,
+} from '../../domain/measurement';
 import { planSets } from '../../domain/setPlan';
 import { ExerciseBrowser } from '../library/ExerciseBrowser';
 import { LoggedSetList } from './LoggedSetList';
@@ -15,7 +17,7 @@ import { PlannedSetRow } from './PlannedSetRow';
 import { RestBanner } from './RestBanner';
 import { useRestTimer } from './useRestTimer';
 import { unlockRestTone } from './restTone';
-import type { LoggedSet, RoutineItem } from '../../db/types';
+import type { RoutineItem } from '../../db/types';
 
 export function ActiveSessionScreen() {
   const { error, run } = useWriteError();
@@ -270,17 +272,11 @@ export function ActiveSessionScreen() {
     if (busy === key) return;
     setBusy(key);
 
-    const values: Partial<LoggedSet> = {};
-    for (const field of fields) {
-      const raw = valueFor(row, field.property, row[field.property]);
-      const parsed = raw.trim() === '' ? undefined : Number(raw);
-      // Cast deliberately: field.property is a union of four keys, and
-      // TypeScript narrows a union-keyed write to their intersection, which
-      // is `never`. The runtime shape is correct by construction.
-      if (parsed !== undefined && !Number.isNaN(parsed)) {
-        (values as Record<string, number>)[field.property] = parsed;
-      }
-    }
+    // Shared with History's edit and add forms, so the two surfaces cannot
+    // disagree about what a valid set is.
+    const values = parseSetFields(fields, (property) =>
+      valueFor(row, property, row[property]),
+    );
 
     // Nothing parsed for any field: there is nothing to write. Calling
     // logSet here would put a set with no weight/reps/duration into the

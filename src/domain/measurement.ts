@@ -57,6 +57,36 @@ export function measurementFields(type: MeasurementType): SetFieldSpec[] {
 }
 
 /**
+ * Turns the strings in a set's input fields into the values to store.
+ *
+ * The one place that decides what a valid set is, shared by the active
+ * workout's confirm and History's edit and add forms so the two can never
+ * disagree. A blank field, or one that does not parse to a number, is
+ * omitted rather than stored as `undefined` or `NaN`. Zero is a real value
+ * and is kept. Nothing else is validated, on purpose.
+ *
+ * `raw` is asked for each field's property, so the caller decides where the
+ * strings live: drafts layered over a prefill, or a form's own state.
+ */
+export function parseSetFields(
+  fields: SetFieldSpec[],
+  raw: (property: SetFieldSpec['property']) => string,
+): Partial<Pick<LoggedSet, SetFieldSpec['property']>> {
+  const values: Partial<Pick<LoggedSet, SetFieldSpec['property']>> = {};
+  for (const field of fields) {
+    const text = raw(field.property);
+    const parsed = text.trim() === '' ? undefined : Number(text);
+    // Cast deliberately: field.property is a union of four keys, and
+    // TypeScript narrows a union-keyed write to their intersection, which
+    // is `never`. The runtime shape is correct by construction.
+    if (parsed !== undefined && !Number.isNaN(parsed)) {
+      (values as Record<string, number>)[field.property] = parsed;
+    }
+  }
+  return values;
+}
+
+/**
  * m:ss. Minutes run past sixty rather than growing an hours field — a gym
  * set is never hours long, and a bare m:ss stays unambiguous.
  */

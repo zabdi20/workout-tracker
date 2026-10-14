@@ -4,8 +4,9 @@ import { getSession } from '../../db/sessions';
 import { listSetsForExercise, listSetsForSession } from '../../db/sets';
 import { listExercises } from '../../db/exercises';
 import { detectAllPrs } from '../../domain/records';
-import { formatSet } from '../../domain/measurement';
-import { PrBadge } from '../PrBadge';
+import { useWriteError } from '../useWriteError';
+import { AddSetForm } from './AddSetForm';
+import { PastSetRow } from './PastSetRow';
 import { formatWorkoutDuration } from './format';
 import type { LoggedSet } from '../../db/types';
 
@@ -36,6 +37,10 @@ function groupByExercise(sets: LoggedSet[]) {
 
 export function PastWorkoutScreen() {
   const { sessionId } = useParams<{ sessionId: string }>();
+  // One runner for every write on this screen, so a failed one has a single
+  // place to show itself. Called before the early returns below: hooks cannot
+  // follow a conditional return.
+  const { error, run } = useWriteError();
 
   // One querier, read-only throughout. Resolves to `undefined` while loading
   // and `null` when the id matches no workout, so "still loading" and "not
@@ -84,6 +89,7 @@ export function PastWorkoutScreen() {
   return (
     <section>
       <h2>{session.name}</h2>
+      {error && <p role="alert">{error}</p>}
       <p>
         {`${new Date(session.startedAt).toLocaleString()} · ${formatWorkoutDuration(session.startedAt, session.endedAt)}`}
       </p>
@@ -93,26 +99,31 @@ export function PastWorkoutScreen() {
       {groupByExercise(sets).map((group) => {
         const exercise = exerciseById.get(group.exerciseId);
         const name = exercise?.name ?? 'Unknown exercise';
+        const measurementType = exercise?.measurementType ?? 'weight_reps';
         return (
           <div key={group.exerciseId}>
             <h3>{`${name}${exercise?.isArchived ? ' (archived)' : ''}`}</h3>
             <ol>
-              {group.sets.map((set, index) => {
-                const kinds = prs.get(set.id);
-                return (
-                  <li key={set.id}>
-                    {/* All of the set's text lives in this one span, with the
-                        badge beside it. Buttons added to this row later sit
-                        beside them too, so text directly in the <li> would
-                        stop matching exactly. */}
-                    <span>
-                      {`${index + 1}. ${formatSet(set, exercise?.measurementType ?? 'weight_reps')}${set.setType === 'warmup' ? ' (warm-up)' : ''}`}
-                    </span>
-                    {kinds && <PrBadge kinds={kinds} />}
-                  </li>
-                );
-              })}
+              {group.sets.map((set, index) => (
+                <PastSetRow
+                  key={set.id}
+                  set={set}
+                  number={index + 1}
+                  exerciseName={name}
+                  measurementType={measurementType}
+                  kinds={prs.get(set.id)}
+                  run={run}
+                />
+              ))}
             </ol>
+            <AddSetForm
+              sessionId={session.id}
+              exerciseId={group.exerciseId}
+              exerciseName={name}
+              measurementType={measurementType}
+              lastSet={group.sets[group.sets.length - 1]}
+              run={run}
+            />
           </div>
         );
       })}

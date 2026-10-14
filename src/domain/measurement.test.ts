@@ -1,5 +1,5 @@
 import type { LoggedSet, MeasurementType } from '../db/types';
-import { formatDuration, formatSet, measurementFields } from './measurement';
+import { formatDuration, formatSet, measurementFields, parseSetFields } from './measurement';
 
 function names(type: MeasurementType) {
   return measurementFields(type).map((f) => f.name);
@@ -112,5 +112,15 @@ describe('formatSet', () => {
 
   it('renders a placeholder rather than undefined when a value is missing', () => {
     expect(formatSet(set({}), 'weight_reps')).toBe('—');
+  });
+});
+
+describe('parseSetFields', () => {
+  const fields = measurementFields('weight_reps');
+  it('keeps numeric fields, zero included', () => {
+    expect(parseSetFields(fields, (p) => (p === 'weight' ? '135' : '0'))).toEqual({ weight: 135, reps: 0 });
+  });
+  it('drops blank and non-numeric fields', () => {
+    expect(parseSetFields(fields, (p) => (p === 'weight' ? ' ' : 'abc'))).toEqual({});
   });
 });
