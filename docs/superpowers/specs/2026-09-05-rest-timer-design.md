@@ -383,6 +383,71 @@ survive a route change the same way it survives nothing today. That changes wher
 record lives relative to the component tree and what remounts when, which is more than
 this plan's wiring change, so it is deliberately left for a later plan.
 
+## Open defect: the tone is silent once the page has reloaded or been backgrounded
+
+**Status: root cause found, fix designed, deprioritized by the user on 2026-10-13.** Not
+fixed. Recorded here so it is picked up rather than rediscovered.
+
+**Symptom.** On the user's iPhone (iOS 18.7, Safari tab, ringer on), a countdown run to
+zero with the app in front flipped the banner to "Rest done" and made no sound. The
+banner flipping proves the state machine worked: the deadline was crossed while visible,
+so `toneAction` returned `'play'`. The failure is entirely in the audio layer.
+
+**Ruled out on the device**, by a throwaway diagnostic page (commit `7d2b859`, since
+deleted) that ran each candidate as an isolated variant with the `AudioContext` state
+logged every ten seconds. Web Audio plays on this phone; the shipped unlock — `resume()`
+alone, with no sound started in the tap — works; and a context stays `running` with its
+clock advancing through 90 seconds of silence. Every variant, including byte-for-byte
+the shipped code, played. Silent mode and standalone mode were also ruled out. What the
+diagnostic never did was reload or background the page between the tap and zero, and
+that is the whole bug.
+
+**Root cause.** The timer was designed to survive the page's lifecycle — that is why the
+record lives in localStorage. The audio unlock survives none of it. The context is a
+module-level variable in `restTone.ts`, created by exactly one call site: the first
+statement of `confirmSet`. So:
+
+- **After any reload (confirmed from the code).** The reloaded page adopts the timer
+  from localStorage, counts down, flips the banner and calls `playRestTone()` — which
+  finds `context === null` and returns silently. Reloads mid-rest are common. iOS
+  discards backgrounded tabs. And `registerType: 'autoUpdate'` makes the page call
+  `window.location.reload()` a few seconds after the first open following every deploy,
+  because vite-plugin-pwa reloads when a new service worker takes control. Check 2 was
+  run immediately after a deploy, which makes this the leading explanation for the
+  observed failure.
+- **After backgrounding (probable, not observed).** A context created before the app was
+  backgrounded may come back in WebKit's non-standard `'interrupted'` state. The unlock
+  only resumes a context that is exactly `'suspended'`, so it would ignore it, and every
+  later tap would leave the tone silent until the app is relaunched.
+
+**Designed fix** — one principle: re-arm the audio, never trust it.
+
+1. The unlock becomes "arm": if there is no context, or it is not `running`, close it and
+   build a fresh one inside the gesture, then resume. A fresh context in a tap is exactly
+   the path the diagnostic proved, so this covers the null case, `'interrupted'`, and
+   anything else, without needing to know which state iOS picked.
+2. Arm on any tap on the session screen — a capture-phase `click` listener — not just on
+   Log set, so the first touch after a reload restores sound. `click` specifically,
+   because it is the event the diagnostic proved unlocks audio on this device.
+3. At zero, if the context is not running, try `resume()`, and play only if it resolves
+   within about a second. Safari may queue a gesture-less resume until the next touch,
+   and playing then would be a late beep.
+
+**Platform limit the fix cannot remove.** After a mid-rest reload, if the screen is not
+touched before zero, there can be no tone: iOS permits audio only after a gesture in the
+current page load. That belongs beside the background limit, stated plainly.
+
+**Verification, on the device.** (1) Log a set, reload the page, tap the screen once,
+wait for zero: the tone plays. (2) Log a set, lock the phone for 20 seconds, come back,
+log another set, wait for zero: the tone plays. (3) The original check: watch a
+countdown run to zero with the app in front.
+
+**Related bug, larger than this one.** The same post-deploy reload can land mid-workout
+and discard whatever has been typed into unlogged set rows, which are UI state by
+design. That is the "a failed write must never discard what the user typed" class that
+shipped twice in Plan 3. It needs its own fix — deferring the reload while a session is
+in progress, or `registerType: 'prompt'` — and is not part of this defect.
+
 ## Out of scope
 
 - The `shortcuts://run-shortcut` URL scheme for native background alerts. Untested,
