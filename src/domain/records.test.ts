@@ -119,6 +119,17 @@ describe('detectPrs', () => {
     ];
     expect(detectPrs(sets).size).toBe(0);
   });
+
+  it('does not let a skipped set become the bar to beat', () => {
+    // If the 500 x 0 qualified it would set a 500 lb bar and block both later sets.
+    const noReps = set({ weight: 500, reps: 0, completedAt: 1 });
+    const first = set({ weight: 225, reps: 5, completedAt: 2 });
+    const second = set({ weight: 235, reps: 5, completedAt: 3 });
+    const prs = detectPrs([noReps, first, second]);
+    expect(prs.get(noReps.id)).toBeUndefined();
+    expect(prs.get(first.id)).toBeUndefined();
+    expect(prs.get(second.id)).toEqual(['heaviest', 'e1rm']);
+  });
 });
 
 describe('detectAllPrs', () => {
@@ -140,6 +151,19 @@ describe('detectAllPrs', () => {
       set({ exerciseId: 'ghost', weight: 200, completedAt: 4 }),
     ];
     expect(detectAllPrs(sets, [exercise('squat', 'weight_reps'), exercise('bench', 'weight_reps')]).size).toBe(0);
+  });
+
+  it('does not let a heavier exercise block another exercise\'s PR', () => {
+    // 235 bench is below the 315 squat, so a single pooled walk would find no PR.
+    const squat = set({ exerciseId: 'squat', weight: 315, completedAt: 1 });
+    const benchFirst = set({ exerciseId: 'bench', weight: 225, completedAt: 2 });
+    const benchSecond = set({ exerciseId: 'bench', weight: 235, completedAt: 3 });
+    const prs = detectAllPrs(
+      [squat, benchFirst, benchSecond],
+      [exercise('squat', 'weight_reps'), exercise('bench', 'weight_reps')],
+    );
+    expect(prs.get(benchSecond.id)).toEqual(['heaviest', 'e1rm']);
+    expect(prs.size).toBe(1);
   });
 });
 
@@ -167,6 +191,15 @@ describe('exerciseRecords', () => {
     expect(records.heaviest?.id).toBe(a.id);
     expect(records.bestE1rm?.set.id).toBe(a.id);
     expect(records.repBests.map((s) => s.id)).toEqual([a.id]);
+  });
+
+  it('ignores a zero-rep set when picking the records', () => {
+    const noReps = set({ weight: 500, reps: 0, completedAt: 1 });
+    const real = set({ weight: 225, reps: 5, completedAt: 2 });
+    const records = exerciseRecords([noReps, real]);
+    expect(records.heaviest?.id).toBe(real.id);
+    expect(records.bestE1rm?.set.id).toBe(real.id);
+    expect(records.repBests.map((s) => s.id)).toEqual([real.id]);
   });
 
   it('uses the weight itself as a single\'s estimate', () => {
