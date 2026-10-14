@@ -111,3 +111,70 @@ export async function lastPerformance(
 
   return sets.sort((a, b) => a.order - b.order);
 }
+
+/**
+ * Every set ever logged for an exercise, across all workouts, oldest first.
+ *
+ * Served by the compound [exerciseId+completedAt] index, the same range
+ * lastPerformance walks, so the order comes from the index rather than a
+ * sort. Includes warm-ups and the workout in progress: deciding what counts
+ * is the caller's job.
+ *
+ * Read-only, so this is safe to call from inside a useLiveQuery querier.
+ */
+export async function listSetsForExercise(exerciseId: string): Promise<LoggedSet[]> {
+  return db.sets
+    .where('[exerciseId+completedAt]')
+    .between([exerciseId, Dexie.minKey], [exerciseId, Dexie.maxKey])
+    .toArray();
+}
+
+/**
+ * Every set in the database, in no particular order.
+ *
+ * For screens that summarise all workouts at once, such as History's PR
+ * counts per row. One read, so a screen's single querier can hold it.
+ *
+ * Read-only, so this is safe to call from inside a useLiveQuery querier.
+ */
+export function listAllSets(): Promise<LoggedSet[]> {
+  return db.sets.toArray();
+}
+
+/**
+ * Adds a set the user forgot to log, to a workout that is already over.
+ *
+ * It must sort inside the workout it belongs to. "Last time" and personal
+ * record order both read completedAt, so stamping the real clock here would
+ * file a set from last month under today. It takes the millisecond right
+ * after that exercise's latest set in this workout instead, and the next
+ * `order` for that exercise, both computed inside the transaction from a
+ * fresh read, as logSet does.
+ *
+ * Refuses an exercise with no sets in the workout: a past workout's exercise
+ * list is derived from its sets, so there is no earlier set to sit after, and
+ * adding a new exercise to a past workout is out of scope.
+ *
+ * NEVER call this from inside a useLiveQuery querier: it opens a readwrite
+ * transaction and Dexie throws ReadOnlyError.
+ */
+export async function addForgottenSet(input: NewLoggedSet): Promise<LoggedSet> {
+  return db.transaction('rw', db.sets, async () => {
+    const existing = await db.sets
+      .where('sessionId')
+      .equals(input.sessionId)
+      .filter((s) => s.exerciseId === input.exerciseId)
+      .toArray();
+
+    if (existing.length === 0) throw new Error('This exercise is not in that workout');
+
+    const set: LoggedSet = {
+      ...input,
+      id: crypto.randomUUID(),
+      order: existing.reduce((max, s) => Math.max(max, s.order), -1) + 1,
+      completedAt: existing.reduce((max, s) => Math.max(max, s.completedAt), 0) + 1,
+    };
+    await db.sets.add(set);
+    return set;
+  });
+}

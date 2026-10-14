@@ -1,5 +1,14 @@
 import { db, resetDbForTests } from './db';
-import { deleteSet, lastPerformance, listSetsForSession, logSet, updateSet } from './sets';
+import {
+  addForgottenSet,
+  deleteSet,
+  lastPerformance,
+  listAllSets,
+  listSetsForExercise,
+  listSetsForSession,
+  logSet,
+  updateSet,
+} from './sets';
 
 beforeEach(async () => {
   await resetDbForTests();
@@ -179,5 +188,44 @@ describe('lastPerformance', () => {
     const last = await lastPerformance('bench', 'current');
 
     expect(last.map((s) => s.setType)).toEqual(['warmup', 'working']);
+  });
+});
+
+function stored(id: string, sessionId: string, exerciseId: string, order: number, completedAt: number) {
+  return db.sets.add({ id, sessionId, exerciseId, order, setType: 'working', unit: 'lb', weight: 200, reps: 5, completedAt });
+}
+
+describe('listSetsForExercise', () => {
+  it('returns every set for the exercise across workouts, oldest first', async () => {
+    await stored('late', 's1', 'bench', 0, 300);
+    await stored('early', 's2', 'bench', 0, 100);
+    await stored('other', 's1', 'squat', 0, 200);
+    expect((await listSetsForExercise('bench')).map((s) => s.id)).toEqual(['early', 'late']);
+  });
+});
+
+describe('listAllSets', () => {
+  it('returns every set', async () => {
+    await stored('a', 's1', 'bench', 0, 100);
+    await stored('b', 's2', 'squat', 0, 200);
+    expect((await listAllSets()).map((s) => s.id).sort()).toEqual(['a', 'b']);
+  });
+});
+
+describe('addForgottenSet', () => {
+  it('places the set just after that exercise\'s last set in the workout', async () => {
+    await stored('b0', 's1', 'bench', 0, 1000);
+    await stored('b1', 's1', 'bench', 1, 2000);
+    await stored('q0', 's1', 'squat', 0, 5000);
+    const added = await addForgottenSet({ sessionId: 's1', exerciseId: 'bench', setType: 'working', unit: 'lb', weight: 205, reps: 4 });
+    expect(added.order).toBe(2);
+    expect(added.completedAt).toBe(2001);
+    expect((await db.sets.get(added.id))?.weight).toBe(205);
+  });
+
+  it('refuses an exercise that is not in the workout', async () => {
+    await stored('b0', 's1', 'bench', 0, 1000);
+    await expect(addForgottenSet({ sessionId: 's1', exerciseId: 'squat', setType: 'working', unit: 'lb', weight: 300, reps: 5 }))
+      .rejects.toThrow(/not in that workout/i);
   });
 });

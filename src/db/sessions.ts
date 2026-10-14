@@ -76,11 +76,18 @@ export async function startSession(routine: Routine): Promise<Session> {
  * A routine archived mid-session needs no special case. archiveRoutine
  * strips it from every cycle, and advanceAfter returns the cycle unchanged
  * when indexOf is -1.
+ *
+ * Finishing a session that is already completed is a silent no-op, the same
+ * way startSession returns the open session instead of starting another. A
+ * double-tap on Finish, or a stale screen finishing a workout History has
+ * since shown, would otherwise re-stamp endedAt (rewriting a past workout's
+ * duration) and advance the rotation a second time.
  */
 export async function finishSession(id: string): Promise<void> {
   await db.transaction('rw', db.sessions, db.cycles, async () => {
     const session = await db.sessions.get(id);
     if (!session) throw new Error('Session not found');
+    if (session.status === 'completed') return;
 
     await db.sessions.update(id, { endedAt: Date.now(), status: 'completed' });
 
@@ -108,6 +115,96 @@ export async function finishSession(id: string): Promise<void> {
  */
 export async function discardSession(id: string): Promise<void> {
   await db.transaction('rw', db.sessions, db.sets, async () => {
+    await db.sets.where('sessionId').equals(id).delete();
+    await db.sessions.delete(id);
+  });
+}
+
+/**
+ * Every finished workout, newest first by start time.
+ *
+ * `status` is an indexed string, so .where() is correct here. The workout in
+ * progress is left out on purpose: it has its own way in from Today, and
+ * History must not become a second route into editing the live session.
+ *
+ * Read-only, so this is safe to call from inside a useLiveQuery querier.
+ */
+export async function listCompletedSessions(): Promise<Session[]> {
+  const done = await db.sessions.where('status').equals('completed').toArray();
+  return done.sort((a, b) => b.startedAt - a.startedAt);
+}
+
+/**
+ * Moves a finished workout so it started at `newStartedAt`, shifting its
+ * end time and every one of its sets by the same amount.
+ *
+ * The sets MUST move with the session. The "last time" prefill and personal
+ * record order both read each set's completedAt, so moving only the session
+ * would leave both pointing at the wrong workout with nothing visibly wrong.
+ *
+ * Takes the new ABSOLUTE start time rather than a shift. The shift is
+ * computed here, inside the transaction, from a fresh read of startedAt: one
+ * computed at render time would be applied twice by a double-tapped Save,
+ * whereas the second call here finds the workout already there and does
+ * nothing.
+ *
+ * A time in the same minute as the current start is a no-op. The date-and-time
+ * input carries no seconds, so an untouched field arrives as the start time
+ * with its seconds dropped, and honouring it would shift the workout by those
+ * seconds.
+ *
+ * A workout cannot be moved so that it ends in the future.
+ *
+ * NEVER call this from inside a useLiveQuery querier: it opens a readwrite
+ * transaction and Dexie throws ReadOnlyError.
+ */
+export async function moveSession(id: string, newStartedAt: number): Promise<void> {
+  await db.transaction('rw', db.sessions, db.sets, async () => {
+    const session = await db.sessions.get(id);
+    if (!session) throw new Error('Workout not found');
+    if (session.status === 'in_progress') {
+      throw new Error('The workout in progress cannot be moved');
+    }
+
+    if (Math.floor(newStartedAt / 60_000) === Math.floor(session.startedAt / 60_000)) return;
+
+    const delta = newStartedAt - session.startedAt;
+    if ((session.endedAt ?? session.startedAt) + delta > Date.now()) {
+      throw new Error('A workout cannot be moved into the future');
+    }
+
+    await db.sessions.update(id, {
+      startedAt: session.startedAt + delta,
+      ...(session.endedAt !== undefined ? { endedAt: session.endedAt + delta } : {}),
+    });
+    await db.sets.where('sessionId').equals(id).modify((s) => {
+      s.completedAt += delta;
+    });
+  });
+}
+
+/**
+ * Deletes a finished workout and its sets, in one transaction.
+ *
+ * Refuses a session still in progress, which has discardSession and its
+ * confirmation. Leaves the rotation exactly where it is: rewinding which
+ * routine is next because an old workout was deleted would surprise far more
+ * often than it would help, so cycles is not part of this transaction.
+ *
+ * An id that no longer exists is not an error. Like discardSession this is
+ * idempotent, so a double-tapped Delete cannot fail on its second call after
+ * the first has already done the job.
+ *
+ * NEVER call this from inside a useLiveQuery querier: it opens a readwrite
+ * transaction and Dexie throws ReadOnlyError.
+ */
+export async function deleteCompletedSession(id: string): Promise<void> {
+  await db.transaction('rw', db.sessions, db.sets, async () => {
+    const session = await db.sessions.get(id);
+    if (session?.status === 'in_progress') {
+      throw new Error('The workout in progress cannot be deleted here; discard it instead');
+    }
+
     await db.sets.where('sessionId').equals(id).delete();
     await db.sessions.delete(id);
   });
