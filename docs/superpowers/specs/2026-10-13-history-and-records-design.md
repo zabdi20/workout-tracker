@@ -214,7 +214,8 @@ one that set it, consistent with "strictly beats".
 
 It is reachable from each exercise heading in a past workout, and from the Library
 **(my call)**. The Library has no read-only view of an exercise — tapping one opens its
-edit form — so the link goes inside that form, shown for existing exercises only.
+edit form — so the link is rendered beside that form, for existing exercises only. Beside
+rather than inside, so the form stays free of router dependencies, along with its tests.
 
 ## Live badges in the active workout
 
