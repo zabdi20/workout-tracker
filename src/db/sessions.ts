@@ -155,10 +155,20 @@ export async function listCompletedSessions(): Promise<Session[]> {
  *
  * A workout cannot be moved so that it ends in the future.
  *
+ * A start time that is not a finite number is rejected before anything is
+ * read. A cleared datetime-local input parses to NaN, which fails every
+ * comparison below, so neither the same-minute nor the future guard would
+ * fire and the session and all of its sets would be written as NaN. NaN is
+ * not a valid IndexedDB key, so those sets would drop out of the
+ * [exerciseId+completedAt] index and vanish from "last time" and from
+ * personal-record order.
+ *
  * NEVER call this from inside a useLiveQuery querier: it opens a readwrite
  * transaction and Dexie throws ReadOnlyError.
  */
 export async function moveSession(id: string, newStartedAt: number): Promise<void> {
+  if (!Number.isFinite(newStartedAt)) throw new Error('Invalid start time');
+
   await db.transaction('rw', db.sessions, db.sets, async () => {
     const session = await db.sessions.get(id);
     if (!session) throw new Error('Workout not found');

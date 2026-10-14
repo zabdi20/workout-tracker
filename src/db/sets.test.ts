@@ -197,10 +197,13 @@ function stored(id: string, sessionId: string, exerciseId: string, order: number
 
 describe('listSetsForExercise', () => {
   it('returns every set for the exercise across workouts, oldest first', async () => {
-    await stored('late', 's1', 'bench', 0, 300);
-    await stored('early', 's2', 'bench', 0, 100);
-    await stored('other', 's1', 'squat', 0, 200);
-    expect((await listSetsForExercise('bench')).map((s) => s.id)).toEqual(['early', 'late']);
+    // The ids are chosen so that primary-key order, in either direction, is
+    // not chronological order: only the [exerciseId+completedAt] index is.
+    await stored('a-late', 's1', 'bench', 0, 300);
+    await stored('b-early', 's2', 'bench', 0, 100);
+    await stored('c-mid', 's3', 'bench', 0, 200);
+    await stored('d-other', 's1', 'squat', 0, 150);
+    expect((await listSetsForExercise('bench')).map((s) => s.id)).toEqual(['b-early', 'c-mid', 'a-late']);
   });
 });
 
@@ -214,11 +217,14 @@ describe('listAllSets', () => {
 
 describe('addForgottenSet', () => {
   it('places the set just after that exercise\'s last set in the workout', async () => {
+    // Bench has a gap in its numbering and squat a higher order than any bench
+    // set, so a count of the bench sets (2) and a session-wide max (5 + 1) both
+    // disagree with the per-exercise max + 1.
     await stored('b0', 's1', 'bench', 0, 1000);
-    await stored('b1', 's1', 'bench', 1, 2000);
-    await stored('q0', 's1', 'squat', 0, 5000);
+    await stored('b1', 's1', 'bench', 3, 2000);
+    await stored('q0', 's1', 'squat', 5, 5000);
     const added = await addForgottenSet({ sessionId: 's1', exerciseId: 'bench', setType: 'working', unit: 'lb', weight: 205, reps: 4 });
-    expect(added.order).toBe(2);
+    expect(added.order).toBe(4);
     expect(added.completedAt).toBe(2001);
     expect((await db.sets.get(added.id))?.weight).toBe(205);
   });

@@ -176,8 +176,13 @@ const MIN = 60_000;
 const DAY = 86_400_000;
 const T = Date.UTC(2025, 0, 6, 17, 0); // a past Monday, on the minute
 
-async function finished(id: string, startedAt: number, setTimes: number[] = []) {
-  await db.sessions.add({ id, routineId: null, name: id, startedAt, endedAt: startedAt + 60 * MIN, status: 'completed' });
+async function finished(
+  id: string,
+  startedAt: number,
+  setTimes: number[] = [],
+  routineId: string | null = null,
+) {
+  await db.sessions.add({ id, routineId, name: id, startedAt, endedAt: startedAt + 60 * MIN, status: 'completed' });
   for (const [i, at] of setTimes.entries()) {
     await db.sets.add({ id: `${id}-${i}`, sessionId: id, exerciseId: 'bench', order: i, setType: 'working', unit: 'lb', weight: 200, reps: 5, completedAt: at });
   }
@@ -191,14 +196,38 @@ describe('finishSession on a finished session', () => {
     await finishSession(session.id);
     expect((await getSession(session.id))?.endedAt).toBe(1000);
   });
+
+  it('does not advance the rotation a second time', async () => {
+    // advanceAfter sets currentIndex to position(R) + 1, which is absolute: two
+    // finishes in a row land on the same index, so a second advance would be
+    // invisible. The pointer has to move on in between, as it does when the user
+    // skips ahead, for a second advance to show.
+    const a = await createRoutine('A');
+    const b = await createRoutine('B');
+    const c = await createRoutine('C');
+    const cycle = await getOrCreateActiveCycle();
+    const rotation = { ...cycle, routineIds: [a.id, b.id, c.id] };
+    await saveCycle({ ...rotation, currentIndex: 0 });
+
+    const session = await startSession(a);
+    await finishSession(session.id);
+    expect((await getActiveCycle())?.currentIndex).toBe(1);
+
+    await saveCycle({ ...rotation, currentIndex: 2 });
+    await finishSession(session.id);
+    expect((await getActiveCycle())?.currentIndex).toBe(2);
+  });
 });
 
 describe('listCompletedSessions', () => {
   it('lists finished workouts newest first and leaves out the one in progress', async () => {
-    await finished('old', T);
-    await finished('new', T + DAY);
-    await db.sessions.add({ id: 'live', routineId: null, name: 'live', startedAt: T + 2 * DAY, status: 'in_progress' });
-    expect((await listCompletedSessions()).map((s) => s.id)).toEqual(['new', 'old']);
+    // The ids are chosen so that neither primary-key order, in either
+    // direction, nor oldest-first happens to equal the expected order.
+    await finished('a-mid', T + DAY);
+    await finished('b-old', T);
+    await finished('c-new', T + 2 * DAY);
+    await db.sessions.add({ id: 'live', routineId: null, name: 'live', startedAt: T + 3 * DAY, status: 'in_progress' });
+    expect((await listCompletedSessions()).map((s) => s.id)).toEqual(['c-new', 'a-mid', 'b-old']);
   });
 });
 
@@ -222,10 +251,16 @@ describe('moveSession', () => {
   });
 
   it('applies a repeated save of the same time only once', async () => {
+    // Fired together, as a double-tap does, so the second call is already
+    // waiting when the first starts. startedAt and endedAt are written as
+    // absolute values and read the same after a double shift; only the set
+    // shows it, so the assertion on the set is the one that matters.
     await finished('w', T, [T + MIN]);
-    await moveSession('w', T - DAY);
-    await moveSession('w', T - DAY);
-    expect((await getSession('w'))?.startedAt).toBe(T - DAY);
+    await Promise.all([moveSession('w', T - DAY), moveSession('w', T - DAY)]);
+    const moved = await getSession('w');
+    expect(moved?.startedAt).toBe(T - DAY);
+    expect(moved?.endedAt).toBe(T - DAY + 60 * MIN);
+    expect((await db.sets.get('w-0'))?.completedAt).toBe(T - DAY + MIN);
   });
 
   it('treats a time in the same minute as no change', async () => {
@@ -235,10 +270,32 @@ describe('moveSession', () => {
     expect((await db.sets.get('w-0'))?.completedAt).toBe(T + MIN);
   });
 
-  it('refuses to move a workout so it ends in the future', async () => {
+  it('refuses to move a workout so it starts in the future', async () => {
     await finished('w', T);
     await expect(moveSession('w', Date.now() + DAY)).rejects.toThrow(/future/i);
     expect((await getSession('w'))?.startedAt).toBe(T);
+  });
+
+  it('refuses to move a workout so it ends in the future, though it starts in the past', async () => {
+    // The workout lasts 60 minutes, so starting it 10 minutes ago ends it 50
+    // minutes from now. A check on the new start alone would let this through.
+    await finished('w', T, [T + MIN]);
+    const tenMinutesAgo = Math.floor((Date.now() - 10 * MIN) / MIN) * MIN;
+    await expect(moveSession('w', tenMinutesAgo)).rejects.toThrow(/future/i);
+    expect((await getSession('w'))?.startedAt).toBe(T);
+    expect((await db.sets.get('w-0'))?.completedAt).toBe(T + MIN);
+  });
+
+  it.each([[NaN], [Infinity], [-Infinity]])('refuses %s as a start time and changes nothing', async (bad) => {
+    // A cleared datetime-local input parses to NaN. NaN fails every comparison,
+    // so neither guard below it would fire, and the workout and its sets would
+    // all be written as NaN, which is not a valid index key.
+    await finished('w', T, [T + MIN]);
+    await expect(moveSession('w', bad)).rejects.toThrow(/invalid start time/i);
+    const unchanged = await getSession('w');
+    expect(unchanged?.startedAt).toBe(T);
+    expect(unchanged?.endedAt).toBe(T + 60 * MIN);
+    expect((await db.sets.get('w-0'))?.completedAt).toBe(T + MIN);
   });
 
   it('refuses the workout in progress', async () => {
@@ -273,7 +330,9 @@ describe('deleteCompletedSession', () => {
     const b = await createRoutine('B');
     const cycle = await getOrCreateActiveCycle();
     await saveCycle({ ...cycle, routineIds: [a.id, b.id], currentIndex: 1 });
-    await finished('w', T);
+    // A routine that is in the rotation, so an un-advance keyed on the
+    // session's routine would have something to act on.
+    await finished('w', T, [], a.id);
     await deleteCompletedSession('w');
     expect((await getActiveCycle())?.currentIndex).toBe(1);
   });
