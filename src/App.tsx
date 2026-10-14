@@ -6,6 +6,7 @@ import { RoutineEditor } from './ui/routines/RoutineEditor';
 import { CycleEditor } from './ui/cycle/CycleEditor';
 import { TodayScreen } from './ui/today/TodayScreen';
 import { ActiveSessionScreen } from './ui/session/ActiveSessionScreen';
+import { PastWorkoutScreen } from './ui/history/PastWorkoutScreen';
 
 export function App() {
   return (
@@ -16,6 +17,7 @@ export function App() {
         <Route element={<AppLayout />}>
           <Route path="/" element={<TodayScreen />} />
           <Route path="/session" element={<ActiveSessionScreen />} />
+          <Route path="/history/:sessionId" element={<PastWorkoutScreen />} />
           <Route path="/routines" element={<RoutinesScreen />} />
           <Route path="/routines/:routineId" element={<RoutineEditor />} />
           <Route path="/cycle" element={<CycleEditor />} />
