@@ -44,10 +44,29 @@ it('shows the date, duration, working-set count and PR count', async () => {
   renderAt('/history');
   const row = (await screen.findByRole('link', { name: 'Second' })).closest('li')!;
   expect(row).toHaveTextContent(`${new Date(T).toLocaleString()} · 75 min · 2 sets · 1 PR`);
+  // toHaveTextContent is a substring match, so "1 PRs" would pass it.
+  expect(row.textContent).toMatch(/· 1 PR(?!s)/);
   const firstRow = screen.getByRole('link', { name: 'First' }).closest('li')!;
   expect(firstRow).not.toHaveTextContent('PR');
   // "1 sets" would pass a plain substring match on "1 set".
   expect(firstRow.textContent).toMatch(/· 1 set(?!s)/);
+});
+
+it('counts PR sets, not badges, and pluralizes them', async () => {
+  const bench = await seedExercise();
+  await seedWorkout({ name: 'Before', startedAt: T - DAY, sets: [{ exerciseId: bench.id, weight: 225, reps: 5, completedAt: T - DAY + MIN }] });
+  // Both sets earn two kinds (heaviest, est. 1RM): two PR sets, four badges.
+  await seedWorkout({
+    name: 'Big day', startedAt: T,
+    sets: [
+      { exerciseId: bench.id, weight: 235, reps: 5, completedAt: T + MIN },
+      { exerciseId: bench.id, weight: 245, reps: 5, completedAt: T + 2 * MIN },
+    ],
+  });
+  renderAt('/history');
+  const row = (await screen.findByRole('link', { name: 'Big day' })).closest('li')!;
+  expect(row.textContent).toMatch(/· 2 PRs/);
+  expect(row.textContent).not.toMatch(/· 4 PR/);
 });
 
 it('shows a dash rather than NaN when a workout has no end time', async () => {
