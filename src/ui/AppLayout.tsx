@@ -4,6 +4,7 @@ import { prepareLibrary } from '../db/seed';
 
 const TABS = [
   { to: '/', label: 'Today', end: true },
+  { to: '/history', label: 'History', end: false },
   { to: '/routines', label: 'Routines', end: false },
   { to: '/cycle', label: 'Rotation', end: false },
   { to: '/library', label: 'Library', end: false },

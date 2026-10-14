@@ -28,6 +28,7 @@ it('renders the routed child', async () => {
 it('offers navigation to each section', async () => {
   renderAt('/');
   expect(await screen.findByRole('link', { name: 'Today' })).toBeInTheDocument();
+  expect(screen.getByRole('link', { name: 'History' })).toBeInTheDocument();
   expect(screen.getByRole('link', { name: 'Routines' })).toBeInTheDocument();
   expect(screen.getByRole('link', { name: 'Library' })).toBeInTheDocument();
 });

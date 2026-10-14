@@ -19,3 +19,15 @@ it('seeds the library on first run', async () => {
   render(<App />);
   await expect.poll(() => db.exercises.count()).toBeGreaterThan(100);
 });
+
+it('routes /history to the History screen', async () => {
+  const base = import.meta.env.BASE_URL;
+  window.history.pushState({}, '', `${base}history`);
+  try {
+    render(<App />);
+    expect(await screen.findByRole('heading', { name: 'History' }, { timeout: 5000 })).toBeInTheDocument();
+    await expect.poll(() => db.exercises.count()).toBeGreaterThan(100);
+  } finally {
+    window.history.pushState({}, '', base);
+  }
+});
