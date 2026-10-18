@@ -28,6 +28,7 @@ it('shows the heaviest set, the best estimate and the rep bests', async () => {
     { exerciseId: bench.id, weight: 235, reps: 3, completedAt: T + 3 * MIN },
   ] });
   renderAt(`/exercises/${bench.id}/records`);
+  expect(await screen.findByRole('heading', { level: 2, name: 'Barbell Bench Press — records' })).toBeInTheDocument();
   expect(await screen.findByText('Heaviest: 235 lb × 3', { exact: false })).toBeInTheDocument();
   expect(screen.getByText('Best est. 1RM: 270.0 lb, from 225 lb × 6', { exact: false })).toBeInTheDocument();
   expect(within(screen.getByRole('list', { name: 'Rep bests' })).getAllByRole('listitem').map((li) => li.textContent?.split(' · ')[0]))
@@ -47,6 +48,18 @@ it('lists different units as separate rep bests, ordered by real weight', async 
   renderAt(`/exercises/${bench.id}/records`);
   const rows = within(await screen.findByRole('list', { name: 'Rep bests' })).getAllByRole('listitem');
   expect(rows.map((li) => li.textContent?.split(' · ')[0])).toEqual(['100 kg × 3', '60 kg × 5', '100 lb × 8']);
+});
+
+it('shows the estimate in the unit of the set it came from, rounded to one decimal', async () => {
+  // Every other fixture is in pounds. 100 kg × 5 estimates 116.666…, which
+  // rounds to 116.7 and would truncate to 116.6, so only toFixed(1) and the
+  // set's own unit produce this line.
+  const bench = await seedExercise();
+  await seedWorkout({ startedAt: T, sets: [
+    { exerciseId: bench.id, unit: 'kg', weight: 100, reps: 5, completedAt: T + MIN },
+  ] });
+  renderAt(`/exercises/${bench.id}/records`);
+  expect(await screen.findByText('Best est. 1RM: 116.7 kg, from 100 kg × 5', { exact: false })).toBeInTheDocument();
 });
 
 it('says records are kept for weight-and-reps exercises only', async () => {

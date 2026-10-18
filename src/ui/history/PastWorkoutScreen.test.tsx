@@ -113,6 +113,10 @@ it('still shows a workout whose exercise was archived later, marked archived', a
   await archiveExercise(bench.id);
   renderAt(`/history/${w.id}`);
   expect(await screen.findByRole('heading', { level: 3, name: 'Barbell Bench Press (archived)' })).toBeInTheDocument();
+  // The marker sits outside the link, so the link is named for the exercise
+  // alone. The heading's name reads the same either way; this tells them apart.
+  expect(screen.getByRole('link', { name: 'Barbell Bench Press' }))
+    .toHaveAttribute('href', `/exercises/${bench.id}/records`);
 });
 
 it('drops badges for an exercise retyped away from weight × reps', async () => {
