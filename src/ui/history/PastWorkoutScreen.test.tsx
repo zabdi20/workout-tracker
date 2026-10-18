@@ -1,22 +1,34 @@
-import { render, screen, waitFor, within } from '@testing-library/react';
+import { fireEvent, render, screen, waitFor, within } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
 import { MemoryRouter, Route, Routes } from 'react-router-dom';
 import { resetDbForTests } from '../../db/db';
 import { archiveExercise, updateExercise } from '../../db/exercises';
+import { deleteCompletedSession, getSession, moveSession } from '../../db/sessions';
 import { addForgottenSet, listSetsForSession, updateSet } from '../../db/sets';
 import { DAY, MIN, T, seedExercise, seedWorkout } from '../../testFixtures';
 import { PastWorkoutScreen } from './PastWorkoutScreen';
+import { toDateTimeLocalValue } from './format';
 
-// Only updateSet and addForgottenSet are overridden, and only for the tests
-// that need one call to reject. vi.fn(actual.x) calls through by default, so
-// every other call -- including the screen's own reads -- hits the real, reset
-// IndexedDB and is indistinguishable from the unmocked function.
+// Only updateSet, addForgottenSet, moveSession and deleteCompletedSession are
+// overridden, and only for the tests that need to watch a call or make one
+// reject. vi.fn(actual.x) calls through by default, so every other call --
+// including the screen's own reads -- hits the real, reset IndexedDB and is
+// indistinguishable from the unmocked function.
 vi.mock('../../db/sets', async (importOriginal) => {
   const actual = await importOriginal<typeof import('../../db/sets')>();
   return {
     ...actual,
     updateSet: vi.fn(actual.updateSet),
     addForgottenSet: vi.fn(actual.addForgottenSet),
+  };
+});
+
+vi.mock('../../db/sessions', async (importOriginal) => {
+  const actual = await importOriginal<typeof import('../../db/sessions')>();
+  return {
+    ...actual,
+    moveSession: vi.fn(actual.moveSession),
+    deleteCompletedSession: vi.fn(actual.deleteCompletedSession),
   };
 });
 
@@ -362,4 +374,203 @@ it('closes an edit on Cancel without writing, and reopens it with the stored val
   await user.click(screen.getByRole('button', { name: 'Edit Barbell Bench Press set 1' }));
   form = screen.getByRole('form', { name: 'Edit Barbell Bench Press set 1' });
   expect(within(form).getByLabelText(/reps/i)).toHaveValue(5);
+});
+
+it('moves the workout to a new date and time', async () => {
+  const user = userEvent.setup();
+  const { w } = await benchWorkout();
+  renderAt(`/history/${w.id}`);
+  await user.click(await screen.findByRole('button', { name: 'Change date and time' }));
+  const target = new Date(2024, 11, 30, 18, 30).getTime();
+  fireEvent.change(screen.getByLabelText('Workout start'), { target: { value: toDateTimeLocalValue(target) } });
+  await user.click(screen.getByRole('button', { name: 'Save' }));
+  expect(await screen.findByText(new Date(target).toLocaleString(), { exact: false })).toBeInTheDocument();
+  expect((await getSession(w.id))?.startedAt).toBe(target);
+});
+
+it('refuses a time that would end in the future, keeping the input', async () => {
+  const user = userEvent.setup();
+  const { w } = await benchWorkout();
+  renderAt(`/history/${w.id}`);
+  await user.click(await screen.findByRole('button', { name: 'Change date and time' }));
+  const value = toDateTimeLocalValue(Date.now() + DAY);
+  fireEvent.change(screen.getByLabelText('Workout start'), { target: { value } });
+  await user.click(screen.getByRole('button', { name: 'Save' }));
+  expect(await screen.findByRole('alert')).toHaveTextContent(/future/i);
+  expect(screen.getByLabelText('Workout start')).toHaveValue(value);
+});
+
+it('asks before deleting the workout, and Keep it changes nothing', async () => {
+  const user = userEvent.setup();
+  const { w } = await benchWorkout();
+  renderAt(`/history/${w.id}`);
+  await user.click(await screen.findByRole('button', { name: 'Delete workout' }));
+  await user.click(screen.getByRole('button', { name: 'Keep it' }));
+  expect(await getSession(w.id)).toBeDefined();
+});
+
+it('deletes the workout and returns to the list', async () => {
+  const user = userEvent.setup();
+  const { w } = await benchWorkout();
+  renderAt(`/history/${w.id}`);
+  await user.click(await screen.findByRole('button', { name: 'Delete workout' }));
+  await user.click(screen.getByRole('button', { name: 'Yes, delete it' }));
+  expect(await screen.findByText('History list')).toBeInTheDocument();
+  expect(await getSession(w.id)).toBeUndefined();
+});
+
+it('opens the start time prefilled with the stored one, in local time', async () => {
+  const user = userEvent.setup();
+  const { w } = await benchWorkout();
+  renderAt(`/history/${w.id}`);
+  await user.click(await screen.findByRole('button', { name: 'Change date and time' }));
+  expect(screen.getByLabelText('Workout start')).toHaveValue(toDateTimeLocalValue(T));
+  expect(screen.getByLabelText('Workout start')).toHaveAttribute('type', 'datetime-local');
+});
+
+it('does not let the browser\'s own validation block a time typed without seconds', async () => {
+  const user = userEvent.setup();
+  const { w } = await benchWorkout();
+  renderAt(`/history/${w.id}`);
+  await user.click(await screen.findByRole('button', { name: 'Change date and time' }));
+  // jsdom does not enforce a datetime-local input's step on submit, but a
+  // browser does, and a value that disagrees with the step would leave Save
+  // doing nothing. Same attribute, same reason, as the number inputs of a set.
+  expect(screen.getByRole('form', { name: 'Change date and time' })).toHaveProperty('noValidate', true);
+});
+
+it('keeps the typed time and lets it be corrected after a refused move', async () => {
+  const user = userEvent.setup();
+  const { w } = await benchWorkout();
+  renderAt(`/history/${w.id}`);
+  await user.click(await screen.findByRole('button', { name: 'Change date and time' }));
+  fireEvent.change(screen.getByLabelText('Workout start'), {
+    target: { value: toDateTimeLocalValue(Date.now() + DAY) },
+  });
+  await user.click(screen.getByRole('button', { name: 'Save' }));
+  await screen.findByRole('alert');
+
+  // A refused Save must leave Save usable, or the user could only Cancel.
+  const target = new Date(2024, 11, 30, 18, 30).getTime();
+  fireEvent.change(screen.getByLabelText('Workout start'), { target: { value: toDateTimeLocalValue(target) } });
+  await user.click(screen.getByRole('button', { name: 'Save' }));
+  await waitFor(() => expect(screen.queryByLabelText('Workout start')).not.toBeInTheDocument());
+  expect((await getSession(w.id))?.startedAt).toBe(target);
+  expect(screen.queryByRole('alert')).not.toBeInTheDocument();
+});
+
+it('writes nothing and stays open when the time cannot be read', async () => {
+  const user = userEvent.setup();
+  const { w } = await benchWorkout();
+  vi.mocked(moveSession).mockClear();
+  renderAt(`/history/${w.id}`);
+  await user.click(await screen.findByRole('button', { name: 'Change date and time' }));
+  fireEvent.change(screen.getByLabelText('Workout start'), { target: { value: '' } });
+  await user.click(screen.getByRole('button', { name: 'Save' }));
+  expect(moveSession).not.toHaveBeenCalled();
+  expect(screen.getByLabelText('Workout start')).toHaveValue('');
+  expect(screen.queryByRole('alert')).not.toBeInTheDocument();
+  expect((await getSession(w.id))?.startedAt).toBe(T);
+});
+
+it('closes the date form on Cancel without writing, and reopens it with the stored time', async () => {
+  const user = userEvent.setup();
+  const { w } = await benchWorkout();
+  vi.mocked(moveSession).mockClear();
+  renderAt(`/history/${w.id}`);
+  await user.click(await screen.findByRole('button', { name: 'Change date and time' }));
+  fireEvent.change(screen.getByLabelText('Workout start'), {
+    target: { value: toDateTimeLocalValue(new Date(2024, 11, 30, 18, 30).getTime()) },
+  });
+  await user.click(screen.getByRole('button', { name: 'Cancel' }));
+  expect(screen.queryByLabelText('Workout start')).not.toBeInTheDocument();
+  expect(moveSession).not.toHaveBeenCalled();
+
+  await user.click(screen.getByRole('button', { name: 'Change date and time' }));
+  expect(screen.getByLabelText('Workout start')).toHaveValue(toDateTimeLocalValue(T));
+});
+
+it('moves the workout only once when Save is tapped twice', async () => {
+  const user = userEvent.setup();
+  const { w } = await benchWorkout();
+  const actual = await vi.importActual<typeof import('../../db/sessions')>('../../db/sessions');
+  vi.mocked(moveSession).mockClear();
+  // Held open until after the double tap, so the second tap lands while the
+  // first write is still in flight.
+  let release!: () => void;
+  const gate = new Promise<void>((resolve) => { release = resolve; });
+  vi.mocked(moveSession).mockImplementationOnce(async (id, newStartedAt) => {
+    await gate;
+    return actual.moveSession(id, newStartedAt);
+  });
+  renderAt(`/history/${w.id}`);
+  await user.click(await screen.findByRole('button', { name: 'Change date and time' }));
+  fireEvent.change(screen.getByLabelText('Workout start'), {
+    target: { value: toDateTimeLocalValue(new Date(2024, 11, 30, 18, 30).getTime()) },
+  });
+  await user.dblClick(screen.getByRole('button', { name: 'Save' }));
+  release();
+  await waitFor(() => expect(screen.queryByLabelText('Workout start')).not.toBeInTheDocument());
+  expect(moveSession).toHaveBeenCalledTimes(1);
+});
+
+it('puts the confirmation in plain words, and Keep it puts the button back', async () => {
+  const user = userEvent.setup();
+  const { w } = await benchWorkout();
+  renderAt(`/history/${w.id}`);
+  await screen.findByRole('button', { name: 'Delete workout' });
+  expect(screen.queryByText('Delete this workout and everything logged in it?')).not.toBeInTheDocument();
+  await user.click(screen.getByRole('button', { name: 'Delete workout' }));
+  expect(screen.getByText('Delete this workout and everything logged in it?')).toBeInTheDocument();
+  expect(screen.queryByRole('button', { name: 'Delete workout' })).not.toBeInTheDocument();
+  await user.click(screen.getByRole('button', { name: 'Keep it' }));
+  expect(screen.queryByText('Delete this workout and everything logged in it?')).not.toBeInTheDocument();
+  expect(screen.getByRole('button', { name: 'Delete workout' })).toBeInTheDocument();
+});
+
+it('stays on the workout, says why, and can retry when the delete fails', async () => {
+  const user = userEvent.setup();
+  const { w } = await benchWorkout();
+  vi.mocked(deleteCompletedSession).mockRejectedValueOnce(new Error('quota exceeded'));
+  renderAt(`/history/${w.id}`);
+  await user.click(await screen.findByRole('button', { name: 'Delete workout' }));
+  await user.click(screen.getByRole('button', { name: 'Yes, delete it' }));
+  expect(await screen.findByRole('alert')).toHaveTextContent(/quota exceeded/i);
+  expect(screen.queryByText('History list')).not.toBeInTheDocument();
+  expect(screen.getByRole('heading', { level: 2, name: 'Push A' })).toBeInTheDocument();
+  expect(await getSession(w.id)).toBeDefined();
+
+  // The confirmation is still open and its button still works.
+  await user.click(screen.getByRole('button', { name: 'Yes, delete it' }));
+  expect(await screen.findByText('History list')).toBeInTheDocument();
+  expect(await getSession(w.id)).toBeUndefined();
+});
+
+it('deletes the workout\'s sets with it', async () => {
+  const user = userEvent.setup();
+  const { w } = await benchWorkout();
+  renderAt(`/history/${w.id}`);
+  await user.click(await screen.findByRole('button', { name: 'Delete workout' }));
+  await user.click(screen.getByRole('button', { name: 'Yes, delete it' }));
+  await screen.findByText('History list');
+  expect(await listSetsForSession(w.id)).toHaveLength(0);
+});
+
+it('deletes the workout only once when Yes is tapped twice', async () => {
+  const user = userEvent.setup();
+  const { w } = await benchWorkout();
+  const actual = await vi.importActual<typeof import('../../db/sessions')>('../../db/sessions');
+  vi.mocked(deleteCompletedSession).mockClear();
+  let release!: () => void;
+  const gate = new Promise<void>((resolve) => { release = resolve; });
+  vi.mocked(deleteCompletedSession).mockImplementationOnce(async (id) => {
+    await gate;
+    return actual.deleteCompletedSession(id);
+  });
+  renderAt(`/history/${w.id}`);
+  await user.click(await screen.findByRole('button', { name: 'Delete workout' }));
+  await user.dblClick(screen.getByRole('button', { name: 'Yes, delete it' }));
+  release();
+  expect(await screen.findByText('History list')).toBeInTheDocument();
+  expect(deleteCompletedSession).toHaveBeenCalledTimes(1);
 });

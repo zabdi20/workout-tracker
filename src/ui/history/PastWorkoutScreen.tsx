@@ -6,6 +6,8 @@ import { listExercises } from '../../db/exercises';
 import { detectAllPrs } from '../../domain/records';
 import { useWriteError } from '../useWriteError';
 import { AddSetForm } from './AddSetForm';
+import { DeleteWorkoutControl } from './DeleteWorkoutControl';
+import { MoveWorkoutControl } from './MoveWorkoutControl';
 import { PastSetRow } from './PastSetRow';
 import { formatWorkoutDuration } from './format';
 import type { LoggedSet } from '../../db/types';
@@ -93,6 +95,7 @@ export function PastWorkoutScreen() {
       <p>
         {`${new Date(session.startedAt).toLocaleString()} · ${formatWorkoutDuration(session.startedAt, session.endedAt)}`}
       </p>
+      <MoveWorkoutControl sessionId={session.id} startedAt={session.startedAt} run={run} />
 
       {sets.length === 0 && <p className="empty">No sets were logged.</p>}
 
@@ -127,6 +130,8 @@ export function PastWorkoutScreen() {
           </div>
         );
       })}
+
+      <DeleteWorkoutControl sessionId={session.id} run={run} />
     </section>
   );
 }
