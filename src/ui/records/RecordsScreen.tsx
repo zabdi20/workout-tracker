@@ -1,4 +1,4 @@
-import { useParams } from 'react-router-dom';
+import { Link, useParams } from 'react-router-dom';
 import { useLiveQuery } from 'dexie-react-hooks';
 import { getExercise } from '../../db/exercises';
 import { listSetsForExercise } from '../../db/sets';
@@ -30,7 +30,16 @@ export function RecordsScreen() {
   }, [exerciseId]);
 
   if (data === undefined) return <p>Loading…</p>;
-  if (data === null) return <p role="alert">Exercise not found.</p>;
+  if (data === null) {
+    // Back to the Library, where records are reached from outside History, as
+    // History's own not-found page links back to its list.
+    return (
+      <section>
+        <p role="alert">Exercise not found.</p>
+        <Link to="/library">Back to library</Link>
+      </section>
+    );
+  }
 
   const { exercise, records } = data;
 

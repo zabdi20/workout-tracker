@@ -80,6 +80,12 @@ it('says so when the exercise is not found', async () => {
   expect(await screen.findByRole('alert')).toHaveTextContent('Exercise not found.');
 });
 
+it('gives the not-found page a way back to the library', async () => {
+  renderAt('/exercises/nope/records');
+  await screen.findByRole('alert');
+  expect(screen.getByRole('link', { name: /library/i })).toHaveAttribute('href', '/library');
+});
+
 it('ends each record with the date of the set that holds it', async () => {
   // The heaviest ties, so the earlier set holds it; the estimate and the rep
   // best belong to the later set. Different days tell the two dates apart.
