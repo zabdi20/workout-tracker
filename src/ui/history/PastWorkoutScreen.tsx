@@ -1,3 +1,4 @@
+import { useState } from 'react';
 import { Link, Navigate, useParams } from 'react-router-dom';
 import { useLiveQuery } from 'dexie-react-hooks';
 import { getSession } from '../../db/sessions';
@@ -43,6 +44,12 @@ export function PastWorkoutScreen() {
   // place to show itself. Called before the early returns below: hooks cannot
   // follow a conditional return.
   const { error, run } = useWriteError();
+  // True from the moment the user confirms Delete until it fails. A delete
+  // that lands removes the workout from under this screen before the
+  // navigation away arrives, and the live query re-runs in between and finds
+  // nothing. Without this the not-found alert would render in that gap, and a
+  // screen reader would announce an error after a delete that worked.
+  const [leaving, setLeaving] = useState(false);
 
   // One querier, read-only throughout. Resolves to `undefined` while loading
   // and `null` when the id matches no workout, so "still loading" and "not
@@ -76,6 +83,7 @@ export function PastWorkoutScreen() {
 
   if (data === undefined) return <p>Loading…</p>;
   if (data === null) {
+    if (leaving) return null;
     return (
       <section>
         <p role="alert">Workout not found.</p>
@@ -142,7 +150,7 @@ export function PastWorkoutScreen() {
         );
       })}
 
-      <DeleteWorkoutControl sessionId={session.id} run={run} />
+      <DeleteWorkoutControl sessionId={session.id} run={run} onLeaving={setLeaving} />
     </section>
   );
 }

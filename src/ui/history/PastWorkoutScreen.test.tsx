@@ -7,7 +7,7 @@ import { deleteCompletedSession, getSession, moveSession } from '../../db/sessio
 import { addForgottenSet, listSetsForSession, updateSet } from '../../db/sets';
 import { DAY, MIN, T, seedExercise, seedWorkout } from '../../testFixtures';
 import { PastWorkoutScreen } from './PastWorkoutScreen';
-import { toDateTimeLocalValue } from './format';
+import { fromDateTimeLocalValue, toDateTimeLocalValue } from './format';
 
 // Only updateSet, addForgottenSet, moveSession and deleteCompletedSession are
 // overridden, and only for the tests that need to watch a call or make one
@@ -434,6 +434,61 @@ it('deletes the workout and returns to the list', async () => {
   expect(await getSession(w.id)).toBeUndefined();
 });
 
+it('never shows "Workout not found" while leaving after a successful delete', async () => {
+  // The delete removes the workout, the live query re-runs and finds nothing,
+  // and for a moment the screen would render its not-found alert before the
+  // navigation lands. That alert is announced by a screen reader, and the
+  // delete worked. A MutationObserver sees it even when it is gone again
+  // before a frame is painted, which a check after the fact cannot.
+  const user = userEvent.setup();
+  const { w } = await benchWorkout();
+  renderAt(`/history/${w.id}`);
+  await user.click(await screen.findByRole('button', { name: 'Delete workout' }));
+
+  const announced: string[] = [];
+  const look = (records: MutationRecord[]) => {
+    for (const record of records) {
+      const touched: Element[] = [];
+      for (const node of record.addedNodes) {
+        if (node instanceof Element) touched.push(node, ...node.querySelectorAll('*'));
+      }
+      const target = record.target instanceof Element ? record.target : record.target.parentElement;
+      if (target) touched.push(target);
+      for (const el of touched) {
+        if (el.getAttribute('role') === 'alert' && /not found/i.test(el.textContent ?? '')) {
+          announced.push(el.textContent ?? '');
+        }
+      }
+    }
+  };
+  const observer = new MutationObserver(look);
+  observer.observe(document.body, { childList: true, subtree: true, attributes: true, characterData: true });
+  await user.click(screen.getByRole('button', { name: 'Yes, delete it' }));
+  await screen.findByText('History list');
+  look(observer.takeRecords());
+  observer.disconnect();
+
+  expect(announced).toEqual([]);
+  expect(await getSession(w.id)).toBeUndefined();
+});
+
+it('shows "Workout not found", not a blank screen, if the workout is gone after a failed delete', async () => {
+  // The leaving state that hides the not-found message is only for a delete
+  // that landed. A failed one must give it back, or a workout that vanishes
+  // some other way afterwards would leave the screen empty with no way back.
+  const user = userEvent.setup();
+  const { w } = await benchWorkout();
+  vi.mocked(deleteCompletedSession).mockRejectedValueOnce(new Error('quota exceeded'));
+  renderAt(`/history/${w.id}`);
+  await user.click(await screen.findByRole('button', { name: 'Delete workout' }));
+  await user.click(screen.getByRole('button', { name: 'Yes, delete it' }));
+  await screen.findByText(/quota exceeded/i);
+
+  await deleteCompletedSession(w.id);
+  expect(await screen.findByText('Workout not found.')).toBeInTheDocument();
+  expect(screen.getByRole('link', { name: /history/i })).toHaveAttribute('href', '/history');
+});
+
 it('opens the start time prefilled with the stored one, in local time', async () => {
   const user = userEvent.setup();
   const { w } = await benchWorkout();
@@ -527,6 +582,31 @@ it('moves the workout only once when Save is tapped twice', async () => {
   release();
   await waitFor(() => expect(screen.queryByLabelText('Workout start')).not.toBeInTheDocument());
   expect(moveSession).toHaveBeenCalledTimes(1);
+});
+
+it('closes without writing when Save is tapped on an unchanged time in a repeated hour', async () => {
+  // On 2025-11-02 clocks in Chicago go back from 02:00 CDT to 01:00 CST, so
+  // 01:30 happens twice. This workout started at the later one, 07:30 UTC. The
+  // input shows "01:30", and reading that back gives the earlier one, 06:30
+  // UTC: an hour before the stored start, with nothing edited.
+  const user = userEvent.setup();
+  const bench = await seedExercise();
+  const startedAt = Date.UTC(2025, 10, 2, 7, 30);
+  const setAt = startedAt + MIN;
+  const w = await seedWorkout({ startedAt, sets: [{ exerciseId: bench.id, weight: 225, reps: 5, completedAt: setAt }] });
+  // The fixture means something only if the value does not round-trip here.
+  expect(fromDateTimeLocalValue(toDateTimeLocalValue(startedAt))).toBe(startedAt - 60 * MIN);
+
+  vi.mocked(moveSession).mockClear();
+  renderAt(`/history/${w.id}`);
+  await user.click(await screen.findByRole('button', { name: 'Change date and time' }));
+  expect(screen.getByLabelText('Workout start')).toHaveValue('2025-11-02T01:30');
+  await user.click(screen.getByRole('button', { name: 'Save' }));
+
+  await waitFor(() => expect(screen.queryByLabelText('Workout start')).not.toBeInTheDocument());
+  expect(moveSession).not.toHaveBeenCalled();
+  expect((await getSession(w.id))?.startedAt).toBe(startedAt);
+  expect((await listSetsForSession(w.id)).map((s) => s.completedAt)).toEqual([setAt]);
 });
 
 it('puts the confirmation in plain words, and Keep it puts the button back', async () => {

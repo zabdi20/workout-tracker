@@ -34,6 +34,16 @@ export function MoveWorkoutControl({ sessionId, startedAt, run }: MoveWorkoutCon
     e.preventDefault();
     if (busy) return;
 
+    // Unchanged: nothing to move, so close without writing. Not left to
+    // moveSession's same-minute check, because the value does not always
+    // round-trip. In the hour a daylight-saving fall-back repeats, 01:30 names
+    // two instants and parsing it reads the earlier one, so saving a workout
+    // stored at the later 01:30 would move it back an hour with no edit made.
+    if (value === toDateTimeLocalValue(startedAt)) {
+      setDraft(null);
+      return;
+    }
+
     // An empty or unreadable value has nothing to write, and the form stays
     // open: the same no-op a set form makes when none of its fields parse.
     const newStartedAt = fromDateTimeLocalValue(value);
@@ -58,10 +68,13 @@ export function MoveWorkoutControl({ sessionId, startedAt, run }: MoveWorkoutCon
 
   return (
     // noValidate: left to itself the browser checks the value against the
-    // input's step, min and max before submit and refuses with a message that
-    // nothing here is wired to show, leaving Save to do nothing. Whether the
-    // value reads as a time is fromDateTimeLocalValue's call, and the rest is
-    // moveSession's.
+    // input's step, min and max before submit, and on a mismatch or a
+    // half-typed value it shows its own message and never calls onSubmit.
+    // Those checks are not this form's to make, so it is switched off, and
+    // the browser's message goes with it: a cleared or half-typed value now
+    // reaches submit(), which writes nothing and says nothing, so Save
+    // appears to do nothing. Whether the value reads as a time is
+    // fromDateTimeLocalValue's call, and the rest is moveSession's.
     <form aria-label="Change date and time" noValidate onSubmit={(e) => void submit(e, draft)}>
       <label>
         Workout start
