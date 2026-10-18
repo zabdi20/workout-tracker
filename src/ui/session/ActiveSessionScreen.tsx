@@ -5,11 +5,14 @@ import { discardSession, finishSession, getInProgressSession } from '../../db/se
 import { getRoutine } from '../../db/routines';
 import { listExercises } from '../../db/exercises';
 import { getSettings } from '../../db/settings';
-import { deleteSet, lastPerformance, listSetsForSession, logSet } from '../../db/sets';
+import {
+  deleteSet, lastPerformance, listSetsForExercise, listSetsForSession, logSet,
+} from '../../db/sets';
 import { useWriteError } from '../useWriteError';
 import {
   formatDuration, formatSet, measurementFields, parseSetFields,
 } from '../../domain/measurement';
+import { detectAllPrs } from '../../domain/records';
 import { planSets } from '../../domain/setPlan';
 import { ExerciseBrowser } from '../library/ExerciseBrowser';
 import { LoggedSetList } from './LoggedSetList';
@@ -83,7 +86,19 @@ export function ActiveSessionScreen() {
       ),
     );
 
-    return { session, routine, sets, exercises, settings, history };
+    // Each logged exercise's FULL history, across every workout and this one,
+    // not just this session's sets. A PR is a set that beats everything before
+    // it; judged inside this session alone, an exercise's first set here would
+    // only set the bar, however far past last week's best it went. It is read
+    // here, in the one querier, so a badge appears in the same render as the
+    // set it belongs to rather than a beat after.
+    const loggedExerciseIds = [...new Set(sets.map((s) => s.exerciseId))];
+    const prs = detectAllPrs(
+      (await Promise.all(loggedExerciseIds.map((id) => listSetsForExercise(id)))).flat(),
+      exercises,
+    );
+
+    return { session, routine, sets, exercises, settings, history, prs };
     // `added` is a dependency because the querier reads it. Resubscribing
     // cannot loop: setAdded returns the same array when the id is already
     // there, so the identity only changes when a new exercise is picked.
@@ -104,7 +119,7 @@ export function ActiveSessionScreen() {
   if (data === undefined) return <p>Loading…</p>;
   if (data === null) return <Navigate to="/" replace />;
 
-  const { session, routine, sets, exercises, settings, history } = data;
+  const { session, routine, sets, exercises, settings, history, prs } = data;
   const exerciseById = new Map(exercises.map((e) => [e.id, e]));
   const itemByExerciseId = new Map<string, RoutineItem>(
     (routine?.items ?? []).map((i) => [i.exerciseId, i]),
@@ -373,6 +388,7 @@ export function ActiveSessionScreen() {
       <LoggedSetList
         sets={logged}
         measurementType={exercise.measurementType}
+        prs={prs}
         onRemove={(setId) => run(() => deleteSet(setId))}
       />
 

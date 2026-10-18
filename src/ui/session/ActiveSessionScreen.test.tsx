@@ -9,6 +9,7 @@ import { listSetsForSession, logSet } from '../../db/sets';
 import { ActiveSessionScreen } from './ActiveSessionScreen';
 import { REST_TIMER_KEY } from './restTimerStore';
 import { unlockRestTone } from './restTone';
+import { seedWorkout, T, MIN } from '../../testFixtures';
 
 // Only logSet is overridden, and only for the one test that needs it to
 // reject — every other test (including the ones that call logSet directly
@@ -714,4 +715,60 @@ it('clears a running rest when the workout is finished', async () => {
 
   expect(await screen.findByText('Today screen')).toBeInTheDocument();
   expect(localStorage.getItem(REST_TIMER_KEY)).toBeNull();
+});
+
+it('badges a set the moment it beats every earlier workout', async () => {
+  const user = userEvent.setup();
+  const { exercise, routine } = await benchRoutine('Push A', 1);
+  await seedWorkout({ startedAt: T, sets: [{ exerciseId: exercise.id, weight: 225, reps: 5, completedAt: T + MIN }] });
+  await startSession(routine);
+  renderScreen();
+  const weight = await screen.findByLabelText(/weight for set 1/i);
+  await user.clear(weight);
+  await user.type(weight, '235');
+  await user.click(screen.getByRole('button', { name: /log set 1/i }));
+  expect(await screen.findByText('PR: heaviest, est. 1RM')).toBeInTheDocument();
+});
+
+it('does not badge the first set ever logged for an exercise', async () => {
+  const user = userEvent.setup();
+  const { routine } = await benchRoutine('Push A', 1);
+  await startSession(routine);
+  renderScreen();
+  await user.type(await screen.findByLabelText(/weight for set 1/i), '235');
+  await user.type(screen.getByLabelText(/reps for set 1/i), '5');
+  await user.click(screen.getByRole('button', { name: /log set 1/i }));
+  await screen.findByText(/235 lb × 5/);
+  expect(screen.queryByText(/PR:/)).not.toBeInTheDocument();
+});
+
+it('does not badge a warm-up', async () => {
+  const user = userEvent.setup();
+  const { exercise, routine } = await benchRoutine('Push A', 1);
+  await seedWorkout({ startedAt: T, sets: [{ exerciseId: exercise.id, weight: 225, reps: 5, completedAt: T + MIN }] });
+  await startSession(routine);
+  renderScreen();
+  const weight = await screen.findByLabelText(/weight for set 1/i);
+  await user.clear(weight);
+  await user.type(weight, '300');
+  await user.click(screen.getByLabelText(/mark set 1 as a warm-up/i));
+  await user.click(screen.getByRole('button', { name: /log set 1/i }));
+  await screen.findByText(/300 lb × 5/);
+  expect(screen.queryByText(/PR:/)).not.toBeInTheDocument();
+});
+
+it('keeps the badge apart from the set’s text', async () => {
+  // Nothing but a space node separates them, and without it the row reads
+  // "× 5PR: heaviest".
+  const user = userEvent.setup();
+  const { exercise, routine } = await benchRoutine('Push A', 1);
+  await seedWorkout({ startedAt: T, sets: [{ exerciseId: exercise.id, weight: 225, reps: 5, completedAt: T + MIN }] });
+  await startSession(routine);
+  renderScreen();
+  const weight = await screen.findByLabelText(/weight for set 1/i);
+  await user.clear(weight);
+  await user.type(weight, '235');
+  await user.click(screen.getByRole('button', { name: /log set 1/i }));
+  const badge = await screen.findByText('PR: heaviest, est. 1RM');
+  expect(badge.closest('li')).toHaveTextContent('1. 235 lb × 5 PR: heaviest, est. 1RM');
 });
