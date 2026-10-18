@@ -1,8 +1,18 @@
 import { render, screen } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
+import { MemoryRouter } from 'react-router-dom';
 import { db, resetDbForTests } from '../../db/db';
 import { createCustomExercise } from '../../db/exercises';
 import { LibraryScreen } from './LibraryScreen';
+
+// The Library links to an exercise's records page, so it needs a router.
+function renderLibrary() {
+  return render(
+    <MemoryRouter>
+      <LibraryScreen />
+    </MemoryRouter>,
+  );
+}
 
 beforeEach(async () => {
   await resetDbForTests();
@@ -20,7 +30,7 @@ beforeEach(async () => {
 
 it('lists exercises and narrows them as the user searches', async () => {
   const user = userEvent.setup();
-  render(<LibraryScreen />);
+  renderLibrary();
 
   expect(await screen.findByText('Barbell Bench Press')).toBeInTheDocument();
   expect(screen.getByText('Barbell Squat')).toBeInTheDocument();
@@ -33,7 +43,7 @@ it('lists exercises and narrows them as the user searches', async () => {
 
 it('tells the user when nothing matches', async () => {
   const user = userEvent.setup();
-  render(<LibraryScreen />);
+  renderLibrary();
 
   await screen.findByText('Barbell Squat');
   await user.type(screen.getByRole('searchbox', { name: /search exercises/i }), 'zercher');
@@ -48,7 +58,7 @@ it('filters by equipment', async () => {
     equipment: 'cable', measurementType: 'weight_reps',
   });
 
-  render(<LibraryScreen />);
+  renderLibrary();
   await screen.findByText('Cable Fly');
 
   await user.click(screen.getByRole('button', { name: /^filters/i }));
@@ -60,7 +70,7 @@ it('filters by equipment', async () => {
 
 it('filters by muscle, matching secondary muscles too', async () => {
   const user = userEvent.setup();
-  render(<LibraryScreen />);
+  renderLibrary();
   await screen.findByText('Barbell Squat');
 
   await user.click(screen.getByRole('button', { name: /^filters/i }));
@@ -73,7 +83,7 @@ it('filters by muscle, matching secondary muscles too', async () => {
 
 it('clears all filters at once', async () => {
   const user = userEvent.setup();
-  render(<LibraryScreen />);
+  renderLibrary();
   await screen.findByText('Barbell Squat');
 
   await user.click(screen.getByRole('button', { name: /^filters/i }));
@@ -88,7 +98,7 @@ it('clears all filters at once', async () => {
 
 it('does not render a filter checkbox for a muscle no loaded exercise uses', async () => {
   const user = userEvent.setup();
-  render(<LibraryScreen />);
+  renderLibrary();
   await screen.findByText('Barbell Squat');
 
   await user.click(screen.getByRole('button', { name: /^filters/i }));
@@ -102,7 +112,7 @@ it('does not render a filter checkbox for a muscle no loaded exercise uses', asy
 
 it('reflects the filter sheet open/closed state via aria-expanded', async () => {
   const user = userEvent.setup();
-  render(<LibraryScreen />);
+  renderLibrary();
   await screen.findByText('Barbell Squat');
 
   const toggle = screen.getByRole('button', { name: /^filters/i });
@@ -114,7 +124,7 @@ it('reflects the filter sheet open/closed state via aria-expanded', async () => 
 
 it('pluralizes the exercise count correctly', async () => {
   const user = userEvent.setup();
-  render(<LibraryScreen />);
+  renderLibrary();
   await screen.findByText('Barbell Squat');
   expect(screen.getByText('2 exercises')).toBeInTheDocument();
 
@@ -133,7 +143,7 @@ it('swaps the edit form to the newly clicked exercise instead of keeping the sta
     equipment: 'machine', measurementType: 'weight_reps',
   });
 
-  render(<LibraryScreen />);
+  renderLibrary();
   await screen.findByText('Cable Fly');
 
   await user.click(screen.getByText('Cable Fly'));
@@ -161,7 +171,7 @@ it('opens the edit form for a bundled exercise', async () => {
     isArchived: false,
   });
 
-  render(<LibraryScreen />);
+  renderLibrary();
 
   await user.click(
     await screen.findByRole('button', { name: /side to side box shuffle/i }),
@@ -169,4 +179,13 @@ it('opens the edit form for a bundled exercise', async () => {
 
   expect(await screen.findByRole('heading', { name: /edit exercise/i })).toBeInTheDocument();
   expect(screen.getByLabelText(/exercise name/i)).toHaveValue('Side to Side Box Shuffle');
+});
+
+it('links an open exercise to its records', async () => {
+  const user = userEvent.setup();
+  renderLibrary();
+  await user.click(await screen.findByRole('button', { name: /barbell bench press/i }));
+  const bench = (await db.exercises.toArray()).find((e) => e.name === 'Barbell Bench Press')!;
+  expect(await screen.findByRole('link', { name: 'Records' }))
+    .toHaveAttribute('href', `/exercises/${bench.id}/records`);
 });

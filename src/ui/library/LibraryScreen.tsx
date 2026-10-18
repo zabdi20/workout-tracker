@@ -1,4 +1,5 @@
 import { useState } from 'react';
+import { Link } from 'react-router-dom';
 import type { Exercise } from '../../db/types';
 import { CustomExerciseForm } from './CustomExerciseForm';
 import { ExerciseBrowser } from './ExerciseBrowser';
@@ -22,6 +23,13 @@ export function LibraryScreen() {
           onDone={() => setEditing(null)}
           onCancel={() => setEditing(null)}
         />
+      )}
+
+      {/* Beside the form, not inside it, so CustomExerciseForm and its tests
+          stay free of router dependencies. Only an existing exercise has a
+          records page to go to. */}
+      {editing && editing !== 'new' && (
+        <Link to={`/exercises/${editing.id}/records`}>Records</Link>
       )}
 
       <ExerciseBrowser

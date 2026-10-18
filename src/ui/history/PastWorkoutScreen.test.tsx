@@ -574,3 +574,16 @@ it('deletes the workout only once when Yes is tapped twice', async () => {
   expect(await screen.findByText('History list')).toBeInTheDocument();
   expect(deleteCompletedSession).toHaveBeenCalledTimes(1);
 });
+
+it('links weight-and-reps exercises to their records, and nothing else', async () => {
+  const bench = await seedExercise();
+  const plank = await seedExercise('Plank', 'duration');
+  const w = await seedWorkout({ startedAt: T, sets: [
+    { exerciseId: bench.id, weight: 225, reps: 5, completedAt: T + MIN },
+    { exerciseId: plank.id, durationSeconds: 60, completedAt: T + 2 * MIN },
+  ] });
+  renderAt(`/history/${w.id}`);
+  expect(await screen.findByRole('link', { name: 'Barbell Bench Press' }))
+    .toHaveAttribute('href', `/exercises/${bench.id}/records`);
+  expect(screen.queryByRole('link', { name: 'Plank' })).not.toBeInTheDocument();
+});

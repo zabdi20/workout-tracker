@@ -105,7 +105,18 @@ export function PastWorkoutScreen() {
         const measurementType = exercise?.measurementType ?? 'weight_reps';
         return (
           <div key={group.exerciseId}>
-            <h3>{`${name}${exercise?.isArchived ? ' (archived)' : ''}`}</h3>
+            <h3>
+              {/* Records exist for weight-and-reps exercises only. An exercise
+                  that no longer resolves has no records page to go to either.
+                  The archived marker stays outside the link, so the link's
+                  name is exactly the exercise's name. */}
+              {exercise?.measurementType === 'weight_reps' ? (
+                <Link to={`/exercises/${group.exerciseId}/records`}>{name}</Link>
+              ) : (
+                name
+              )}
+              {exercise?.isArchived ? ' (archived)' : null}
+            </h3>
             <ol>
               {group.sets.map((set, index) => (
                 <PastSetRow

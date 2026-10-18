@@ -8,6 +8,7 @@ import { TodayScreen } from './ui/today/TodayScreen';
 import { ActiveSessionScreen } from './ui/session/ActiveSessionScreen';
 import { HistoryScreen } from './ui/history/HistoryScreen';
 import { PastWorkoutScreen } from './ui/history/PastWorkoutScreen';
+import { RecordsScreen } from './ui/records/RecordsScreen';
 
 export function App() {
   return (
@@ -24,6 +25,7 @@ export function App() {
           <Route path="/routines/:routineId" element={<RoutineEditor />} />
           <Route path="/cycle" element={<CycleEditor />} />
           <Route path="/library" element={<LibraryScreen />} />
+          <Route path="/exercises/:exerciseId/records" element={<RecordsScreen />} />
         </Route>
       </Routes>
     </BrowserRouter>

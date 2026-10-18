@@ -211,4 +211,11 @@ describe('exerciseRecords', () => {
     const lb = set({ unit: 'lb', weight: 100, reps: 8, completedAt: 2 });
     expect(exerciseRecords([lb, kg]).repBests.map((s) => s.id)).toEqual([kg.id, lb.id]);
   });
+
+  it('lists rep bests heaviest first, not in the order they were set', () => {
+    const light = set({ weight: 185, reps: 10, completedAt: 1 });
+    const mid = set({ weight: 225, reps: 6, completedAt: 2 });
+    const heavy = set({ weight: 235, reps: 3, completedAt: 3 });
+    expect(exerciseRecords([light, mid, heavy]).repBests.map((s) => s.id)).toEqual([heavy.id, mid.id, light.id]);
+  });
 });
