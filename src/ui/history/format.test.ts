@@ -1,5 +1,14 @@
 import { formatWorkoutDuration, fromDateTimeLocalValue, toDateTimeLocalValue } from './format';
 
+// The canary for vite.config.ts's `test.env.TZ`. Every local-time assertion
+// below and in the History tests is only meaningful away from UTC, where CI
+// runs; if the pin stops taking effect this fails first, instead of every
+// timezone test quietly passing for the wrong reason. January is Central
+// Standard Time, six hours behind UTC.
+it('runs in the pinned zone, six hours behind UTC in January', () => {
+  expect(new Date(2025, 0, 6).getTimezoneOffset()).toBe(360);
+});
+
 it('shows whole minutes', () => expect(formatWorkoutDuration(0, 75 * 60_000 + 20_000)).toBe('75 min'));
 it('shows a dash when the workout has no end', () => expect(formatWorkoutDuration(0, undefined)).toBe('—'));
 

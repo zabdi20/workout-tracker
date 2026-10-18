@@ -73,6 +73,14 @@ export default defineConfig({
     globals: true,
     environment: 'jsdom',
     setupFiles: ['./src/test-setup.ts'],
+    // CI runs in UTC, where local time and UTC are the same clock: a
+    // datetime-local helper that used toISOString or Date.UTC would pass every
+    // test there and shift a workout five or six hours on a phone. Pinning a
+    // zone with a UTC offset and daylight saving makes that regression fail
+    // here. test.env is applied to the test workers only, so the build and the
+    // dev server keep the machine's zone. format.test.ts holds a canary that
+    // fails if this ever stops taking effect.
+    env: { TZ: 'America/Chicago' },
     // A git worktree under .claude/ holds a full copy of src/, so without
     // this every test file is collected twice and the suite reports double
     // its real count — which reads as good news while hiding a failure.
