@@ -277,6 +277,21 @@ timer lives inside the active-workout screen, so switching tabs mid-rest stops i
 rest-timer spec's known-limitation section records. Nothing here changes that. It is
 noted so it isn't mistaken for a regression.
 
+Leaving `/session` for History also discards what the active-workout screen holds only in
+its own state: values typed into a set row but not yet logged, a warm-up box ticked on one,
+rows added to or removed from an exercise's planned list, and an exercise picked from the
+library that has no logged set yet. Logged sets are in the database and survive; nothing
+else does. This predates the plan, since any tab does it, but the History tab puts one
+more tap on the way out. Nothing here changes it, and it is noted for the same reason.
+
+## Known interaction between moved workouts
+
+Moving a workout can place it across another one in time, including across the workout in
+progress; nothing stops that **(my call)**. The data stays consistent, because every set
+moves with its workout and each is still read by its own `completedAt`, so "last time" and
+PR order follow the times as stored. Only the picture is odd: two workouts that look like
+they happened at once. The move is reversible, by moving the workout back.
+
 ## Left to the builder
 
 How the edit forms are laid out; the exact badge wording, as long as it names each PR

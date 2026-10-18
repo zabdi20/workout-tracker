@@ -71,7 +71,11 @@ export function PastSetRow({
         type="button"
         aria-label={`Delete ${name}`}
         // One tap, no confirmation, as removing a logged set is in the active
-        // workout. Deleting twice is harmless, so no busy guard.
+        // workout. There is no busy guard, and a fast second tap is not
+        // harmless: deleting the same set twice would be, but the first delete
+        // re-renders the list and the next row shifts up under the finger, so
+        // the second tap deletes that other set. Nothing here locks the
+        // button or offers an undo.
         onClick={() => void run(() => deleteSet(set.id))}
       >
         Delete

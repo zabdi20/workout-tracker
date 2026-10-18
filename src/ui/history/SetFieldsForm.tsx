@@ -9,7 +9,9 @@ interface SetFieldsFormProps {
   label: string;
   fields: SetFieldSpec[];
   /** The set whose values fill the fields. For an edit it is the set itself;
-   *  for an add it is the exercise's last set. Read once, at mount. */
+   *  for an add it is the exercise's last set. Its field values are read once,
+   *  at mount; its `unit` is read on every render, for the label beside the
+   *  weight field. */
   seed: LoggedSet;
   /** Whether the warm-up box starts ticked. Read once, at mount. */
   initialWarmup: boolean;

@@ -79,8 +79,10 @@ function repKey(s: QualifyingSet): string {
 
 /**
  * The running records over a chronological walk. `detectPrs` and
- * `exerciseRecords` both read this one state, so a set shown as the current
- * record is always the last set that was badged for it.
+ * `exerciseRecords` both read this one state, so the two cannot disagree about
+ * what beat what. A set shown as a current record is the last set that was
+ * badged for that kind or, when nothing has beaten it, the set that first
+ * set the bar, which is never badged.
  */
 class RunningBests {
   heaviest: { set: QualifyingSet; kg: number } | null = null;
