@@ -9,7 +9,7 @@ import { listSetsForSession, logSet } from '../../db/sets';
 import { ActiveSessionScreen } from './ActiveSessionScreen';
 import { REST_TIMER_KEY } from './restTimerStore';
 import { unlockRestTone } from './restTone';
-import { seedWorkout, T, MIN } from '../../testFixtures';
+import { seedWorkout, T, MIN, DAY } from '../../testFixtures';
 
 // Only logSet is overridden, and only for the one test that needs it to
 // reject — every other test (including the ones that call logSet directly
@@ -771,4 +771,21 @@ it('keeps the badge apart from the set’s text', async () => {
   await user.click(screen.getByRole('button', { name: /log set 1/i }));
   const badge = await screen.findByText('PR: heaviest, est. 1RM');
   expect(badge.closest('li')).toHaveTextContent('1. 235 lb × 5 PR: heaviest, est. 1RM');
+});
+
+it('judges a live set against every earlier workout, not just the last one', async () => {
+  // 245 was lifted two workouts ago and 225 last time. A querier that compared
+  // against the last workout alone would badge 235 as the heaviest ever.
+  const user = userEvent.setup();
+  const { exercise, routine } = await benchRoutine('Push A', 1);
+  await seedWorkout({ startedAt: T - 2 * DAY, sets: [{ exerciseId: exercise.id, weight: 245, reps: 5, completedAt: T - 2 * DAY + MIN }] });
+  await seedWorkout({ startedAt: T, sets: [{ exerciseId: exercise.id, weight: 225, reps: 5, completedAt: T + MIN }] });
+  await startSession(routine);
+  renderScreen();
+  const weight = await screen.findByLabelText(/weight for set 1/i);
+  await user.clear(weight);
+  await user.type(weight, '235');
+  await user.click(screen.getByRole('button', { name: /log set 1/i }));
+  await screen.findByText(/1\. 235 lb × 5/);
+  expect(screen.queryByText(/PR:/)).not.toBeInTheDocument();
 });

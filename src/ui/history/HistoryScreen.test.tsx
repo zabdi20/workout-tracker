@@ -2,6 +2,7 @@ import { render, screen } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
 import { MemoryRouter, Route, Routes } from 'react-router-dom';
 import { resetDbForTests } from '../../db/db';
+import { archiveExercise } from '../../db/exercises';
 import { DAY, MIN, T, seedExercise, seedWorkout } from '../../testFixtures';
 import { HistoryScreen } from './HistoryScreen';
 
@@ -88,4 +89,16 @@ it('opens a workout', async () => {
   renderAt('/history');
   await user.click(await screen.findByRole('link', { name: 'Push A' }));
   expect(await screen.findByText('Workout detail')).toBeInTheDocument();
+});
+
+it('still counts the PRs of an exercise that was archived afterwards', async () => {
+  // Archived after the record was set: the workout's own row must keep
+  // counting it, and the earlier workout is what it was judged against.
+  const bench = await seedExercise();
+  await seedWorkout({ name: 'Before', startedAt: T - DAY, sets: [{ exerciseId: bench.id, weight: 225, reps: 5, completedAt: T - DAY + MIN }] });
+  await seedWorkout({ name: 'After', startedAt: T, sets: [{ exerciseId: bench.id, weight: 235, reps: 5, completedAt: T + MIN }] });
+  await archiveExercise(bench.id);
+  renderAt('/history');
+  const row = (await screen.findByRole('link', { name: 'After' })).closest('li')!;
+  expect(row.textContent).toMatch(/· 1 PR(?!s)/);
 });

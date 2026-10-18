@@ -106,9 +106,22 @@ describe('detectPrs', () => {
   });
 
   it('orders sets stamped in the same millisecond by their order field', () => {
-    const first = set({ weight: 225, reps: 5, completedAt: 1, order: 0 });
-    const second = set({ weight: 235, reps: 5, completedAt: 1, order: 1 });
+    // The ids sort the opposite way to the order field, so only the order
+    // tie-break puts these in the right sequence; without it the later set
+    // would be walked first and the earlier one would look like no record.
+    const first = set({ id: 'z', weight: 225, reps: 5, completedAt: 1, order: 0 });
+    const second = set({ id: 'a', weight: 235, reps: 5, completedAt: 1, order: 1 });
     expect(detectPrs([second, first]).get(second.id)).toEqual(['heaviest', 'e1rm']);
+  });
+
+  it('lets the first set with an estimate set the bar, rather than beat it', () => {
+    // 100 x 15 has no estimate, so 100 x 5 is the first set that has one, even
+    // though it is not the first set ever. It ties the weight and has fewer
+    // reps than the 15, so nothing is beaten: a rule that granted est. 1RM to
+    // any set after the first would badge it.
+    const high = set({ weight: 100, reps: 15, completedAt: 1 });
+    const five = set({ weight: 100, reps: 5, completedAt: 2 });
+    expect(detectPrs([high, five]).size).toBe(0);
   });
 
   it('skips sets with no weight or no reps', () => {

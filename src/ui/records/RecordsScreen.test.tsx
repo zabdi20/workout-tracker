@@ -1,6 +1,7 @@
 import { render, screen, within } from '@testing-library/react';
 import { MemoryRouter, Route, Routes } from 'react-router-dom';
 import { resetDbForTests } from '../../db/db';
+import { archiveExercise } from '../../db/exercises';
 import { DAY, MIN, T, seedExercise, seedWorkout } from '../../testFixtures';
 import { RecordsScreen } from './RecordsScreen';
 
@@ -106,4 +107,21 @@ it('leaves out the estimate when every set is above its rep limit', async () => 
   renderAt(`/exercises/${bench.id}/records`);
   expect(await screen.findByText('Heaviest: 100 lb × 15', { exact: false })).toBeInTheDocument();
   expect(screen.queryByText('Best est. 1RM', { exact: false })).not.toBeInTheDocument();
+});
+
+it('keeps the records of an exercise that was archived afterwards', async () => {
+  // Archiving hides an exercise from pickers; it does not erase what was
+  // lifted. The page is still reachable from a past workout's heading.
+  const bench = await seedExercise();
+  await seedWorkout({ startedAt: T, sets: [
+    { exerciseId: bench.id, weight: 225, reps: 5, completedAt: T + MIN },
+    { exerciseId: bench.id, weight: 235, reps: 3, completedAt: T + 2 * MIN },
+  ] });
+  await archiveExercise(bench.id);
+  renderAt(`/exercises/${bench.id}/records`);
+  expect(await screen.findByRole('heading', { level: 2, name: 'Barbell Bench Press — records' })).toBeInTheDocument();
+  expect(screen.getByText('Heaviest: 235 lb × 3', { exact: false })).toBeInTheDocument();
+  expect(within(screen.getByRole('list', { name: 'Rep bests' })).getAllByRole('listitem').map((li) => li.textContent?.split(' · ')[0]))
+    .toEqual(['235 lb × 3', '225 lb × 5']);
+  expect(screen.queryByRole('alert')).not.toBeInTheDocument();
 });

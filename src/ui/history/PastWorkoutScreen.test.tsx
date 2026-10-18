@@ -119,6 +119,17 @@ it('still shows a workout whose exercise was archived later, marked archived', a
     .toHaveAttribute('href', `/exercises/${bench.id}/records`);
 });
 
+it('keeps the badges of an exercise that was archived afterwards', async () => {
+  // Archived after the record was set. Both the set that earned it and the
+  // earlier workout it beat belong to an exercise that is no longer open.
+  const bench = await seedExercise();
+  await seedWorkout({ startedAt: T - DAY, sets: [{ exerciseId: bench.id, weight: 225, reps: 5, completedAt: T - DAY + MIN }] });
+  const w = await seedWorkout({ startedAt: T, sets: [{ exerciseId: bench.id, weight: 235, reps: 5, completedAt: T + MIN }] });
+  await archiveExercise(bench.id);
+  renderAt(`/history/${w.id}`);
+  expect(await screen.findByText('PR: heaviest, est. 1RM')).toBeInTheDocument();
+});
+
 it('drops badges for an exercise retyped away from weight × reps', async () => {
   const bench = await seedExercise();
   await seedWorkout({ startedAt: T - DAY, sets: [{ exerciseId: bench.id, weight: 225, reps: 5, completedAt: T - DAY + MIN }] });
