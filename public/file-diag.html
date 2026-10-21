@@ -1,0 +1,395 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<meta name="apple-mobile-web-app-capable" content="yes">
+<meta name="mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-title" content="File test">
+<link rel="apple-touch-icon" href="icon-192.png">
+<title>Backup file test</title>
+<!--
+  TEMPORARY DIAGNOSTIC — delete once Plan 6's export and import mechanism is
+  chosen.
+
+  How a home-screen PWA on iOS saves a file and reads one back is
+  device-specific and untested. The rest tone taught that a mechanism assumed
+  to work can fail on the phone, so this page tries each candidate before the
+  design commits to one:
+
+    Save A  <a download> on a blob URL — historically unreliable in standalone
+    Save B  Web Share API with a File — the share sheet's "Save to Files"
+    Open    <input type="file">, with and without an accept filter
+
+  Every saved file carries a SHA-256 of its body and its own byte count, so
+  opening it back proves the round trip through iCloud Drive was exact, not
+  just that something came back. The body holds the values a real backup
+  must not lose: non-ASCII names, escapes, 22.5, float noise, millisecond
+  timestamps.
+
+  Payloads are built and hashed ahead of the tap, because navigator.share
+  needs the user's gesture and an await on crypto.subtle could spend it.
+
+  The log persists in localStorage because an installed iOS PWA can
+  cold-reload on resume, and the share sheet is exactly such a resume.
+-->
+<style>
+  body { font: 16px -apple-system, system-ui, sans-serif; margin: 0; padding: 16px;
+         padding-top: max(16px, env(safe-area-inset-top));
+         background: #111; color: #eee; }
+  h1 { font-size: 20px; margin: 0 0 8px; }
+  h2 { font-size: 16px; margin: 18px 0 6px; color: #ccc; }
+  .hint { color: #aaa; font-size: 14px; margin: 6px 0; }
+  #mode { font-size: 18px; font-weight: 700; padding: 10px; border-radius: 10px;
+          background: #333; text-align: center; }
+  button, select { font-size: 17px; width: 100%; margin: 5px 0; border: 0;
+                   border-radius: 10px; padding: 13px 14px; }
+  button { background: #2d6cdf; color: #fff; text-align: left; }
+  button.secondary { background: #444; }
+  button:disabled { opacity: 0.4; }
+  label.file { display: block; background: #2d8a4e; color: #fff; border-radius: 10px;
+               padding: 13px 14px; margin: 5px 0; font-size: 17px; }
+  label.file input { display: block; margin-top: 8px; font-size: 14px; color: #eee; }
+  #verdict { font-size: 22px; font-weight: 700; text-align: center; margin: 10px 0;
+             min-height: 1.3em; }
+  .ok { color: #4cd964; } .bad { color: #ff5c5c; }
+  #log { white-space: pre-wrap; word-break: break-word; font: 12px ui-monospace, monospace;
+         background: #000; padding: 10px; border-radius: 8px; margin-top: 12px;
+         min-height: 4em; }
+</style>
+</head>
+<body>
+<h1>Backup file test</h1>
+<div id="mode">…</div>
+
+<p class="hint">Run everything below <b>twice</b>: once in a Safari tab, then again
+from the home screen (Share → Add to Home Screen, then open it from there).
+The banner above says which one you're in. If the workout app appears instead
+of this page, wait a few seconds and reload.</p>
+
+<h2>1 · Save</h2>
+<label class="hint">Size
+  <select id="size">
+    <option value="real" selected>Realistic, about 2 MB (years of workouts)</option>
+    <option value="small">Small, about 5 KB</option>
+  </select>
+</label>
+<label class="hint">File type
+  <select id="type">
+    <option value="application/json" selected>application/json</option>
+    <option value="text/plain">text/plain</option>
+    <option value="application/octet-stream">application/octet-stream</option>
+  </select>
+</label>
+<button id="saveA" disabled>Save A · download link</button>
+<button id="saveB" disabled>Save B · share sheet → Save to Files</button>
+<p class="hint">Aim for <b>iCloud Drive</b> each time. If Save A replaces this
+screen with text and there's no way back, swipe the app away and reopen it,
+then note that in the chat.</p>
+
+<h2>2 · Open it back</h2>
+<label class="file">Open · JSON files only
+  <input id="openJson" type="file" accept=".json,application/json">
+</label>
+<label class="file">Open · any file
+  <input id="openAny" type="file">
+</label>
+<div id="verdict"></div>
+
+<h2>3 · Report</h2>
+<button id="copy" class="secondary">Copy log</button>
+<button id="clear" class="secondary">Clear log</button>
+<pre id="log"></pre>
+
+<script>
+(function () {
+  'use strict';
+
+  var LOG_KEY = 'file-diag-log';
+  var LOADS_KEY = 'file-diag-loads';
+  var FORMAT = 'workout-tracker-file-diag';
+
+  // Values a real backup must carry through exactly. Compared as JSON text,
+  // so a single changed character anywhere fails the check.
+  var SENTINELS = {
+    text: 'Lateral Shuffle — “quoted” ‘single’ × ÷ ½ é ñ ü 💪🏽 🏋️‍♂️',
+    escapes: 'tab\there "dq" \\ backslash\nnewline\r\nCRLF',
+    weightHalf: 22.5,
+    floatNoise: 0.1 + 0.2,
+    tiny: 1e-9,
+    maxSafe: Number.MAX_SAFE_INTEGER,
+    ms: 1760000000123,
+    nullValue: null,
+    emptyArray: []
+  };
+
+  var standalone = navigator.standalone === true ||
+    (window.matchMedia && window.matchMedia('(display-mode: standalone)').matches);
+  var MODE = standalone ? 'home-screen app' : 'Safari tab';
+
+  // ---- log ---------------------------------------------------------------
+  var logEl = document.getElementById('log');
+  function readLog() {
+    try { return localStorage.getItem(LOG_KEY) || ''; } catch (e) { return ''; }
+  }
+  function writeLog(text) {
+    try { localStorage.setItem(LOG_KEY, text); } catch (e) { /* render-only */ }
+  }
+  var logText = readLog();
+  logEl.textContent = logText;
+  function log(msg) {
+    var t = new Date();
+    var stamp = t.toTimeString().slice(0, 8);
+    logText += '[' + stamp + ' ' + (standalone ? 'APP' : 'TAB') + '] ' + msg + '\n';
+    logEl.textContent = logText;
+    writeLog(logText);
+  }
+
+  // ---- environment ------------------------------------------------------
+  var modeEl = document.getElementById('mode');
+  modeEl.textContent = 'You are in: ' + MODE;
+
+  var loads = 0;
+  try { loads = Number(localStorage.getItem(LOADS_KEY) || 0) + 1;
+        localStorage.setItem(LOADS_KEY, String(loads)); } catch (e) { /* ignore */ }
+
+  log('--- page load #' + loads + ' · mode=' + MODE);
+  log('UA: ' + navigator.userAgent);
+  log('navigator.standalone=' + navigator.standalone +
+      ' display-mode:standalone=' + (window.matchMedia ?
+        window.matchMedia('(display-mode: standalone)').matches : 'n/a'));
+  log('secureContext=' + window.isSecureContext +
+      ' subtle=' + !!(window.crypto && crypto.subtle) +
+      ' share=' + (typeof navigator.share) +
+      ' canShare=' + (typeof navigator.canShare) +
+      ' showSaveFilePicker=' + (typeof window.showSaveFilePicker));
+  try {
+    var probe = new File(['{}'], 'probe.json', { type: 'application/json' });
+    log('canShare({files:[json]})=' +
+        (navigator.canShare ? navigator.canShare({ files: [probe] }) : 'n/a'));
+  } catch (e) { log('canShare probe threw: ' + e); }
+
+  if (navigator.storage) {
+    if (navigator.storage.persisted) {
+      navigator.storage.persisted().then(function (p) { log('storage.persisted=' + p); },
+        function (e) { log('storage.persisted threw: ' + e); });
+    }
+    if (navigator.storage.estimate) {
+      navigator.storage.estimate().then(function (est) {
+        log('storage.estimate usage=' + mb(est.usage) + ' quota=' + mb(est.quota));
+      }, function (e) { log('storage.estimate threw: ' + e); });
+    }
+  } else { log('navigator.storage missing'); }
+
+  document.addEventListener('visibilitychange', function () {
+    log('visibility=' + document.visibilityState);
+  });
+  window.addEventListener('pagehide', function (e) { log('pagehide persisted=' + e.persisted); });
+  window.addEventListener('pageshow', function (e) {
+    if (e.persisted) log('pageshow from bfcache');
+  });
+
+  function mb(n) { return n == null ? '?' : (n / 1048576).toFixed(2) + ' MB'; }
+
+  // ---- payload ----------------------------------------------------------
+  function hex(buf) {
+    var b = new Uint8Array(buf), s = '';
+    for (var i = 0; i < b.length; i++) s += (b[i] < 16 ? '0' : '') + b[i].toString(16);
+    return s;
+  }
+  function sha256(text) {
+    return crypto.subtle.digest('SHA-256', new TextEncoder().encode(text)).then(hex);
+  }
+  function rng(seed) { // mulberry32
+    return function () {
+      seed |= 0; seed = seed + 0x6D2B79F5 | 0;
+      var t = Math.imul(seed ^ seed >>> 15, 1 | seed);
+      t = t + Math.imul(t ^ t >>> 7, 61 | t) ^ t;
+      return ((t ^ t >>> 14) >>> 0) / 4294967296;
+    };
+  }
+  function buildBody(size) {
+    var n = size === 'small' ? 20 : 8000;
+    var r = rng(42);
+    var weights = [22.5, 135, 62.5, 185, 7.5, 0, 102.5];
+    var exercises = ['Barbell_Squat', 'Dumbbell_Bench_Press', 'Lateral_Shuffle',
+                     'explosive-box-step-up', 'Pullups'];
+    var sets = [];
+    var t = 1700000000000;
+    for (var i = 0; i < n; i++) {
+      t += Math.floor(r() * 300000) + 1;
+      sets.push({
+        id: '00000000-0000-4000-8000-' + ('000000000000' + i).slice(-12),
+        sessionId: 'session-' + Math.floor(i / 25),
+        exerciseId: exercises[i % exercises.length],
+        order: i % 25,
+        setType: i % 7 === 0 ? 'warmup' : 'working',
+        weight: weights[i % weights.length],
+        unit: i % 3 === 0 ? 'kg' : 'lb',
+        reps: 1 + Math.floor(r() * 12),
+        completedAt: t,
+        notes: i % 50 === 0 ? SENTINELS.text : undefined
+      });
+    }
+    return { sentinels: SENTINELS, sets: sets };
+  }
+
+  var prepared = null;
+  var preparing = 0;
+  var saveA = document.getElementById('saveA');
+  var saveB = document.getElementById('saveB');
+  var sizeEl = document.getElementById('size');
+  var typeEl = document.getElementById('type');
+
+  function stampName(method) {
+    var d = new Date();
+    function p(n) { return (n < 10 ? '0' : '') + n; }
+    return 'workout-backup-test-' + method + '-' + d.getFullYear() + p(d.getMonth() + 1) +
+      p(d.getDate()) + '-' + p(d.getHours()) + p(d.getMinutes()) + p(d.getSeconds()) + '.json';
+  }
+
+  // Builds the file text with its own UTF-8 byte count inside it. The count
+  // is a fixed-width field, so writing the real number in cannot change it.
+  function prepare() {
+    var ticket = ++preparing;
+    saveA.disabled = true; saveB.disabled = true;
+    var size = sizeEl.value;
+    var body = buildBody(size);
+    var bodyText = JSON.stringify(body);
+    return Promise.resolve().then(function () { return sha256(bodyText); }).then(function (bodySha) {
+      if (ticket !== preparing) return;
+      var meta = {
+        format: FORMAT,
+        nonce: Math.random().toString(36).slice(2, 10),
+        createdAt: new Date().toISOString(),
+        savedFrom: MODE,
+        size: size,
+        bodySha256: bodySha,
+        fileBytes: '0000000000'
+      };
+      var text = JSON.stringify({ meta: meta, body: body }, null, 1);
+      var bytes = new TextEncoder().encode(text).length;
+      meta.fileBytes = ('0000000000' + bytes).slice(-10);
+      text = JSON.stringify({ meta: meta, body: body }, null, 1);
+      prepared = { text: text, meta: meta, bytes: bytes };
+      saveA.disabled = false; saveB.disabled = false;
+    }, function (e) { log('prepare failed: ' + e); });
+  }
+  sizeEl.addEventListener('change', prepare);
+  typeEl.addEventListener('change', prepare);
+
+  // ---- save A: download link -------------------------------------------
+  saveA.addEventListener('click', function () {
+    if (!prepared) return;
+    var p = prepared, type = typeEl.value, name = stampName('A');
+    log('Save A tapped · ' + name + ' · ' + type + ' · ' + p.bytes + ' bytes · nonce=' + p.meta.nonce);
+    try {
+      var url = URL.createObjectURL(new Blob([p.text], { type: type }));
+      var a = document.createElement('a');
+      a.href = url; a.download = name; a.rel = 'noopener';
+      document.body.appendChild(a);
+      a.click();
+      a.remove();
+      log('Save A: a.click() returned without throwing');
+      // Revoking at once can cancel an iOS download that hasn't started yet.
+      setTimeout(function () { URL.revokeObjectURL(url); }, 60000);
+    } catch (e) { log('Save A threw: ' + e); }
+    prepare();
+  });
+
+  // ---- save B: share sheet ---------------------------------------------
+  saveB.addEventListener('click', function () {
+    if (!prepared) return;
+    var p = prepared, type = typeEl.value, name = stampName('B');
+    log('Save B tapped · ' + name + ' · ' + type + ' · ' + p.bytes + ' bytes · nonce=' + p.meta.nonce);
+    if (!navigator.share) { log('Save B: navigator.share is missing'); return; }
+    var file;
+    try { file = new File([p.text], name, { type: type }); }
+    catch (e) { log('Save B: File constructor threw: ' + e); return; }
+    if (navigator.canShare && !navigator.canShare({ files: [file] })) {
+      log('Save B: canShare says no for this file');
+      return;
+    }
+    navigator.share({ files: [file] }).then(function () {
+      log('Save B: share() resolved (the sheet reported success)');
+    }, function (e) {
+      log('Save B: share() rejected · ' + (e && e.name) + ': ' + (e && e.message));
+    });
+    prepare();
+  });
+
+  // ---- open -------------------------------------------------------------
+  var verdictEl = document.getElementById('verdict');
+  function verdict(ok, msg) {
+    verdictEl.className = ok ? 'ok' : 'bad';
+    verdictEl.textContent = (ok ? 'INTACT ✓ ' : 'DAMAGED ✗ ') + msg;
+  }
+
+  function onPick(label) {
+    return function (ev) {
+      var file = ev.target.files && ev.target.files[0];
+      ev.target.value = '';
+      if (!file) { log('Open (' + label + '): picker closed with no file'); return; }
+      log('Open (' + label + '): name=' + file.name + ' size=' + file.size +
+          ' type="' + file.type + '" lastModified=' + new Date(file.lastModified).toISOString());
+      file.text().then(function (text) {
+        var data;
+        try { data = JSON.parse(text); }
+        catch (e) { log('Open: JSON.parse failed: ' + e); verdict(false, 'not valid JSON'); return; }
+        if (!data || !data.meta || data.meta.format !== FORMAT) {
+          log('Open: not a file from this page'); verdict(false, 'not a test file'); return;
+        }
+        var m = data.meta;
+        log('Open: file says saved from ' + m.savedFrom + ' at ' + m.createdAt +
+            ' · nonce=' + m.nonce + ' · size=' + m.size);
+        var problems = [];
+        var bytes = new TextEncoder().encode(text).length;
+        if (String(bytes) !== String(Number(m.fileBytes))) {
+          problems.push('byte count ' + bytes + ' ≠ saved ' + Number(m.fileBytes));
+        }
+        if (file.size !== Number(m.fileBytes)) {
+          problems.push('file.size ' + file.size + ' ≠ saved ' + Number(m.fileBytes));
+        }
+        if (JSON.stringify(data.body.sentinels) !== JSON.stringify(SENTINELS)) {
+          problems.push('sentinel values changed');
+        }
+        return sha256(JSON.stringify(data.body)).then(function (sha) {
+          if (sha !== m.bodySha256) problems.push('body hash mismatch');
+          if (problems.length) {
+            log('Open: DAMAGED · ' + problems.join('; '));
+            verdict(false, problems[0]);
+          } else {
+            log('Open: INTACT · ' + bytes + ' bytes, hash and sentinels match');
+            verdict(true, bytes + ' bytes');
+          }
+        });
+      }).catch(function (e) { log('Open: read failed: ' + e); verdict(false, 'read failed'); });
+    };
+  }
+  document.getElementById('openJson').addEventListener('change', onPick('JSON only'));
+  document.getElementById('openAny').addEventListener('change', onPick('any file'));
+
+  // ---- report -----------------------------------------------------------
+  document.getElementById('copy').addEventListener('click', function () {
+    var done = function () { log('(log copied)'); };
+    if (navigator.clipboard && navigator.clipboard.writeText) {
+      navigator.clipboard.writeText(logText).then(done, function (e) {
+        log('clipboard failed: ' + e + ' · select the log text by hand');
+      });
+    } else {
+      var range = document.createRange();
+      range.selectNodeContents(logEl);
+      var sel = window.getSelection(); sel.removeAllRanges(); sel.addRange(range);
+      log('clipboard API missing · log text selected, tap Copy');
+    }
+  });
+  document.getElementById('clear').addEventListener('click', function () {
+    logText = ''; writeLog(''); logEl.textContent = '';
+    log('--- log cleared · mode=' + MODE);
+  });
+
+  prepare();
+})();
+</script>
+</body>
+</html>
