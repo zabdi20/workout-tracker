@@ -1100,7 +1100,7 @@ async function dumpDatabase(page: Page): Promise<Record<string, unknown[]>> {
 
 - [ ] **Step 5: Commit** — `test: prove the backup round trip in WebKit and gate the deploy on it`
 
-- [ ] **Step 6: CI** — push the branch and run the workflow with `workflow_dispatch` against it, if the user allows. Otherwise note that CI is unproven until merge.
+- [ ] **Step 6: CI** — **do not** dispatch `deploy.yml` on the branch: it deploys to the live site. Validate the workflow file's syntax locally (for example `npx --yes @action-validator/cli .github/workflows/deploy.yml`, or by reading it against the action docs). The final message must say that CI's Playwright step is first proven on the merge to `main`.
 
 ---
 
