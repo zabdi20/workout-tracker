@@ -123,4 +123,10 @@ describe('parseSetFields', () => {
   it('drops blank and non-numeric fields', () => {
     expect(parseSetFields(fields, (p) => (p === 'weight' ? ' ' : 'abc'))).toEqual({});
   });
+  it.each(['1e999', 'Infinity', '-Infinity'])('drops %s as it drops NaN', (text) => {
+    // Infinity survives an isNaN check, and JSON.stringify writes it as null,
+    // which the backup validator then refuses: one typo would make every
+    // backup unrestorable.
+    expect(parseSetFields(fields, (p) => (p === 'weight' ? text : '8'))).toEqual({ reps: 8 });
+  });
 });

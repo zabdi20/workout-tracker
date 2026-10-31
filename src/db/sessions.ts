@@ -1,5 +1,6 @@
 import { db } from './db';
 import { advanceAfter } from '../domain/cycle';
+import { EARLIEST_PLAUSIBLE_TIME } from '../domain/backupValidate';
 import type { Routine, Session } from './types';
 
 /**
@@ -163,11 +164,18 @@ export async function listCompletedSessions(): Promise<Session[]> {
  * [exerciseId+completedAt] index and vanish from "last time" and from
  * personal-record order.
  *
+ * A start before 2000 is refused for the same reason: the backup validator
+ * refuses any timestamp that early, so the workout would make every backup
+ * unrestorable. The check runs before the transaction opens.
+ *
  * NEVER call this from inside a useLiveQuery querier: it opens a readwrite
  * transaction and Dexie throws ReadOnlyError.
  */
 export async function moveSession(id: string, newStartedAt: number): Promise<void> {
   if (!Number.isFinite(newStartedAt)) throw new Error('Invalid start time');
+  if (newStartedAt < EARLIEST_PLAUSIBLE_TIME) {
+    throw new Error('A workout cannot be moved before 2000');
+  }
 
   await db.transaction('rw', db.sessions, db.sets, async () => {
     const session = await db.sessions.get(id);

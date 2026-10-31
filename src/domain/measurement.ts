@@ -61,8 +61,9 @@ export function measurementFields(type: MeasurementType): SetFieldSpec[] {
  *
  * The one place that decides what a valid set is, shared by the active
  * workout's confirm and History's edit and add forms so the two can never
- * disagree. A blank field, or one that does not parse to a number, is
- * omitted rather than stored as `undefined` or `NaN`. Zero is a real value
+ * disagree. A blank field, or one that does not parse to a finite number, is
+ * omitted rather than stored as `undefined`, `NaN` or `Infinity`: a
+ * non-finite value would make every backup unrestorable. Zero is a real value
  * and is kept. Nothing else is validated, on purpose.
  *
  * `raw` is asked for each field's property, so the caller decides where the
@@ -79,7 +80,7 @@ export function parseSetFields(
     // Cast deliberately: field.property is a union of four keys, and
     // TypeScript narrows a union-keyed write to their intersection, which
     // is `never`. The runtime shape is correct by construction.
-    if (parsed !== undefined && !Number.isNaN(parsed)) {
+    if (parsed !== undefined && Number.isFinite(parsed)) {
       (values as Record<string, number>)[field.property] = parsed;
     }
   }

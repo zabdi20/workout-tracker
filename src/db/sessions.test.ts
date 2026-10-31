@@ -1,4 +1,6 @@
 import { db, resetDbForTests } from './db';
+import { EARLIEST_PLAUSIBLE_TIME } from '../domain/backupValidate';
+import { DAY, MIN, T, seedExercise, seedWorkout } from '../testFixtures';
 import { archiveRoutine, createRoutine } from './routines';
 import {
   deleteCompletedSession,
@@ -172,10 +174,6 @@ describe('discardSession', () => {
   });
 });
 
-const MIN = 60_000;
-const DAY = 86_400_000;
-const T = Date.UTC(2025, 0, 6, 17, 0); // a past Monday, on the minute
-
 async function finished(
   id: string,
   startedAt: number,
@@ -306,6 +304,20 @@ describe('moveSession', () => {
 
   it('rejects an unknown workout', async () => {
     await expect(moveSession('nope', T)).rejects.toThrow(/not found/i);
+  });
+
+  it('refuses to move a workout before 2000, leaving it and its sets where they were', async () => {
+    const bench = await seedExercise();
+    const w = await seedWorkout({ startedAt: T, sets: [{ exerciseId: bench.id, weight: 100, reps: 5, completedAt: T + MIN }] });
+    await expect(moveSession(w.id, Date.UTC(1999, 11, 31, 12))).rejects.toThrow('A workout cannot be moved before 2000');
+    expect((await db.sessions.get(w.id))?.startedAt).toBe(T);
+    expect((await db.sets.where('sessionId').equals(w.id).toArray()).map((s) => s.completedAt)).toEqual([T + MIN]);
+  });
+
+  it('allows a move to exactly the start of 2000', async () => {
+    const w = await seedWorkout({ startedAt: T });
+    await moveSession(w.id, EARLIEST_PLAUSIBLE_TIME);
+    expect((await db.sessions.get(w.id))?.startedAt).toBe(EARLIEST_PLAUSIBLE_TIME);
   });
 });
 
