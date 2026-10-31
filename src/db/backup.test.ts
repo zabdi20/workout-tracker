@@ -5,7 +5,9 @@ import {
   applyRestore, createBackup, previewRestore, readSnapshot, recordBackup,
 } from './backup';
 import { backupFileName, parseBackup, TABLE_NAMES } from '../domain/backupFormat';
-import { fullTables, backupFile, sessionRow } from '../domain/backupTestRows';
+import { validateTables } from '../domain/backupValidate';
+import { fullTables, backupFile, NOW, sessionRow } from '../domain/backupTestRows';
+import bundled from '../data/exercises.json';
 import { seedExercise, seedWorkout, T, MIN, DAY } from '../testFixtures';
 
 beforeEach(async () => {
@@ -95,6 +97,18 @@ it('records the database and library versions', async () => {
   expect((await createBackup()).file).toMatchObject({ dbVersion: db.verno, libraryVersion: 0 });
   await prepareLibrary();
   expect((await createBackup()).file).toMatchObject({ dbVersion: db.verno, libraryVersion: LIBRARY_VERSION });
+});
+
+it('accepts the bundled library exactly as prepareLibrary stores it', async () => {
+  // Rejects: a build:exercises revision with a row the validator refuses.
+  // prepareLibrary would store it without complaint, and every backup made on
+  // a fresh phone would then fail its own check and be refused on restore.
+  await prepareLibrary();
+  const stored = await db.exercises.toArray();
+  // Non-vacuity: every bundled row was in what was checked.
+  expect(stored).toHaveLength(bundled.length);
+
+  expect(validateTables({ ...fullTables(), exercises: stored }, NOW)).toBeNull();
 });
 
 it('creating a backup records nothing', async () => {
