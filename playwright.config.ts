@@ -18,6 +18,10 @@ export default defineConfig({
   ],
   use: {
     baseURL: BASE_URL,
+    // The first real run is on a Linux runner nobody can open, and a failure
+    // there stops the deploy. These are what the workflow uploads to look at.
+    trace: 'retain-on-failure',
+    screenshot: 'only-on-failure',
   },
   webServer: {
     command: 'npx vite preview --port 4173 --strictPort',

@@ -158,6 +158,9 @@ test('a backup made in one browser restores identically into an empty one', asyn
   await createRoutine(a, 'Lower A', ['Barbell Squat']);
   await tab(a, 'Rotation').click();
   await a.getByRole('button', { name: 'Add Upper A to rotation' }).click();
+  // The editor builds the new rotation from the one it last rendered, so a
+  // second click before this lands could write a rotation without Upper A.
+  await expect(a.getByTestId('cycle-slot-name')).toHaveText(['Upper A']);
   await a.getByRole('button', { name: 'Add Lower A to rotation' }).click();
   await expect(a.getByTestId('cycle-slot-name')).toHaveText(['Upper A', 'Lower A']);
 
