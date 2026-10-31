@@ -93,6 +93,33 @@ it.each([
   },
 );
 
+// All digits, so the old check passed them. 309 of them would be Infinity,
+// which JSON writes as null, but jsdom (like WebKit) empties a number input
+// whose value overflows, so these are the largest values that survive: 20
+// nines are far past what a number holds exactly, and the second is the
+// first integer past the largest that it does.
+it.each([
+  ['20 digits', '9'.repeat(20)],
+  ['one past the largest safe integer', String(Number.MAX_SAFE_INTEGER + 1)],
+])(
+  'refuses a rest too large to store, keeping what was typed (%s)',
+  async (_label, typed) => {
+    const user = userEvent.setup();
+    const put = vi.spyOn(db.settings, 'put');
+    renderScreen();
+    const field = await screen.findByLabelText(REST_LABEL);
+
+    await user.clear(field);
+    await user.type(field, typed);
+    await user.tab();
+
+    expect(await screen.findByRole('alert')).toHaveTextContent(REST_PROBLEM);
+    expect(await defaultRest()).toBe(90);
+    expect(put).not.toHaveBeenCalled();
+    expect(screen.getByLabelText(REST_LABEL)).toHaveValue(Number(typed));
+  },
+);
+
 it('takes the refusal back once a valid rest is saved', async () => {
   const user = userEvent.setup();
   renderScreen();

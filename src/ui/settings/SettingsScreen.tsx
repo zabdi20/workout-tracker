@@ -58,14 +58,18 @@ export function SettingsScreen() {
   async function commitRest() {
     if (restDraft === null) return;
     const typed = restDraft;
-    if (!/^\d+$/.test(typed) || Number(typed) < 1) {
+    const seconds = /^\d+$/.test(typed) ? Number(typed) : NaN;
+    // Digits alone aren't enough. Past 308 of them the number is Infinity,
+    // which JSON writes as null, and a stored null would make every later
+    // backup fail its own check; short of that it is still not exact.
+    if (!Number.isSafeInteger(seconds) || seconds < 1) {
       setRestProblem(REST_PROBLEM);
       return;
     }
     setRestProblem(null);
     // Cleared only once the write has landed, and only if nothing was typed
     // while it ran: on failure the user keeps the number to retry with.
-    if (await run(() => updateSettings({ defaultRestSeconds: Number(typed) }))) {
+    if (await run(() => updateSettings({ defaultRestSeconds: seconds }))) {
       setRestDraft((current) => (current === typed ? null : current));
     }
   }
