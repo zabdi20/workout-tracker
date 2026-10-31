@@ -72,13 +72,47 @@ it.each<[string, (t: BackupTables) => void, string]>([
   expect(validateTables(t, NOW)).toBe(message);
 });
 
-it('reports the first problem: earlier table, then earlier row, then earlier field', () => {
+// The first problem is the first in a fixed order, not the first alphabetically
+// or the first as the object happens to be built. Each fixture below makes the
+// expected answer differ from alphabetical order AND from insertion order.
+
+it('reports the earlier field of a row, in the order the type declares them', () => {
   const t = fullTables();
-  t.sets[0].weight = NaN; // a later table
-  // Array order, not id or name order: the first row sorts last on both.
+  // Declared: primaryMuscles comes before measurementType. Alphabetical puts
+  // measurementType first, and so does this row's own key order.
+  const { primaryMuscles: _p, measurementType: _m, ...rest } = t.exercises[0];
+  t.exercises[0] = { measurementType: 'yoga' as never, primaryMuscles: ['back' as never], ...rest };
+  expect(Object.keys(t.exercises[0]).indexOf('measurementType'))
+    .toBeLessThan(Object.keys(t.exercises[0]).indexOf('primaryMuscles'));
+  expect(validateTables(t, NOW)).toBe('Exercise "Explosive Box Step-Up": "primaryMuscles" is not a known value.');
+});
+
+it('reports the earlier row of a table, in array order rather than id or name order', () => {
+  const t = fullTables();
+  // The first row sorts last on both id and name.
   t.exercises.push(exerciseRow({ id: 'ex-a', name: 'Alpha', equipment: 'sled' as never }));
-  t.exercises.unshift(exerciseRow({ id: 'ex-z', name: 'Zed', equipment: 'sled' as never, isCustom: 'yes' as never }));
+  t.exercises.unshift(exerciseRow({ id: 'ex-z', name: 'Zed', equipment: 'sled' as never }));
   expect(validateTables(t, NOW)).toBe('Exercise "Zed": "equipment" is not a known value.');
+});
+
+it('reports the earlier table, in the file\'s table order rather than alphabetical or insertion order', () => {
+  // Alphabetically cycles come before routines; this object also lists them
+  // that way. The file's order is routines first.
+  const { routines, cycles, ...others } = fullTables();
+  const t: BackupTables = { cycles, routines, ...others };
+  expect(Object.keys(t).indexOf('cycles')).toBeLessThan(Object.keys(t).indexOf('routines'));
+  t.cycles[0].currentIndex = NaN;
+  t.routines[0].isArchived = 'no' as never;
+  expect(validateTables(t, NOW)).toBe('Routine "Upper A": "isArchived" is not true or false.');
+});
+
+it('checks a table-level rule after that table\'s rows and before the next table', () => {
+  const t = fullTables();
+  t.cycles.push(cycleRow({ id: 'c-2', isActive: true })); // two active rotations
+  t.sessions[0].status = 'brunch' as never; // a bad row, but in the next table
+  expect(validateTables(t, NOW)).toBe('More than one rotation is active.');
+  t.cycles[1].currentIndex = NaN; // now a bad row in the same table
+  expect(validateTables(t, NOW)).toBe('Rotation "c-2": "currentIndex" is not a finite number.');
 });
 
 it('ignores a field it does not know', () => {
