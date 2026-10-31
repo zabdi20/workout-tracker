@@ -1,0 +1,167 @@
+{
+  "format": "workout-tracker-backup",
+  "formatVersion": 1,
+  "exportedAt": 1793417385299,
+  "dbVersion": 1,
+  "libraryVersion": 2,
+  "tables": {
+    "exercises": [
+      {
+        "id": "Side_to_Side_Box_Shuffle",
+        "name": "Lateral Shuffle",
+        "primaryMuscles": [
+          "quads"
+        ],
+        "secondaryMuscles": [
+          "abductors",
+          "adductors",
+          "calves",
+          "hamstrings"
+        ],
+        "equipment": "other",
+        "measurementType": "duration",
+        "instructions": "Stand to one side of the box with your left foot resting on the middle of it. To begin, jump up and over to the other side of the box, landing with your right foot on top of the box and your left foot on the floor. Swing your arms to aid your movement. Continue shuffling back and forth across the box.",
+        "isCustom": false,
+        "isArchived": false
+      },
+      {
+        "name": "Explosive Box Step-Up",
+        "primaryMuscles": [
+          "quads"
+        ],
+        "secondaryMuscles": [
+          "glutes"
+        ],
+        "equipment": "other",
+        "measurementType": "bodyweight_reps",
+        "id": "d5a10314-fa70-4b0c-9f26-8646838fedef",
+        "isCustom": true,
+        "isArchived": false
+      }
+    ],
+    "routines": [
+      {
+        "id": "422a8358-0845-4f95-a26f-fe3c807889d6",
+        "name": "Lower A",
+        "items": [
+          {
+            "id": "ba3c257e-0d3c-4da6-b3aa-90069ec18f74",
+            "exerciseId": "Barbell_Squat",
+            "order": 0,
+            "targetSets": 3,
+            "targetRepMin": 6,
+            "targetRepMax": 8,
+            "restSeconds": 150
+          },
+          {
+            "id": "6f0eac4c-b38e-4656-9ba8-ff9012ca915b",
+            "exerciseId": "d5a10314-fa70-4b0c-9f26-8646838fedef",
+            "order": 1
+          },
+          {
+            "id": "6402c46f-1ddf-485a-9021-d3692f04eb3e",
+            "exerciseId": "Side_to_Side_Box_Shuffle",
+            "order": 2
+          }
+        ],
+        "isArchived": false,
+        "createdAt": 1793417385288,
+        "updatedAt": 1793417385289
+      }
+    ],
+    "cycles": [
+      {
+        "id": "069f3271-a10e-42c5-bc00-eeca7277231a",
+        "name": "Current split",
+        "routineIds": [
+          "422a8358-0845-4f95-a26f-fe3c807889d6"
+        ],
+        "currentIndex": 0,
+        "isActive": true
+      }
+    ],
+    "sessions": [
+      {
+        "id": "3100d941-3ab5-43f5-8093-f386f8416005",
+        "routineId": "422a8358-0845-4f95-a26f-fe3c807889d6",
+        "name": "Lower A",
+        "startedAt": 1793158185292,
+        "status": "completed",
+        "endedAt": 1793158185295
+      },
+      {
+        "id": "7b14272f-3280-4d8c-80f9-728299eae569",
+        "routineId": "422a8358-0845-4f95-a26f-fe3c807889d6",
+        "name": "Lower A",
+        "startedAt": 1793417385298,
+        "status": "in_progress"
+      }
+    ],
+    "sets": [
+      {
+        "sessionId": "3100d941-3ab5-43f5-8093-f386f8416005",
+        "exerciseId": "Barbell_Squat",
+        "setType": "working",
+        "unit": "kg",
+        "weight": 22.5,
+        "reps": 8,
+        "id": "2ce1f4ef-2189-4eca-9b2e-1683ac7245dd",
+        "order": 1,
+        "completedAt": 1793158185294
+      },
+      {
+        "sessionId": "3100d941-3ab5-43f5-8093-f386f8416005",
+        "exerciseId": "Barbell_Squat",
+        "setType": "warmup",
+        "unit": "lb",
+        "weight": 135,
+        "reps": 5,
+        "id": "8cbf1bbc-a72b-4b02-b7da-1c01626bed47",
+        "order": 0,
+        "completedAt": 1793158185293
+      },
+      {
+        "sessionId": "3100d941-3ab5-43f5-8093-f386f8416005",
+        "exerciseId": "Side_to_Side_Box_Shuffle",
+        "setType": "working",
+        "unit": "lb",
+        "durationSeconds": 20,
+        "id": "a168425c-bd8f-467e-a6fb-3ca006177def",
+        "order": 0,
+        "completedAt": 1793158185295
+      },
+      {
+        "sessionId": "3100d941-3ab5-43f5-8093-f386f8416005",
+        "exerciseId": "d5a10314-fa70-4b0c-9f26-8646838fedef",
+        "setType": "working",
+        "unit": "lb",
+        "reps": 6,
+        "id": "bcb3c17f-c1f0-4012-b06c-5bc625a7b57c",
+        "order": 0,
+        "completedAt": 1793158185294
+      },
+      {
+        "sessionId": "7b14272f-3280-4d8c-80f9-728299eae569",
+        "exerciseId": "Barbell_Squat",
+        "setType": "working",
+        "unit": "lb",
+        "weight": 185,
+        "reps": 5,
+        "id": "ec6ac654-94f6-4600-afa4-2843b3298b0d",
+        "order": 0,
+        "completedAt": 1793417385299
+      }
+    ],
+    "bodyweight": [],
+    "goals": [],
+    "settings": [
+      {
+        "id": "singleton",
+        "unitPreference": "kg",
+        "defaultRestSeconds": 90,
+        "restAlertSound": false,
+        "libraryVersion": 2
+      }
+    ]
+  }
+}
