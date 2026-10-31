@@ -3,6 +3,7 @@ import { useParams } from 'react-router-dom';
 import { useLiveQuery } from 'dexie-react-hooks';
 import { getRoutine, renameRoutine, updateRoutineItems } from '../../db/routines';
 import { useWriteError } from '../useWriteError';
+import { WriteErrorAlert } from '../WriteErrorAlert';
 import { listExercises } from '../../db/exercises';
 import {
   addItem, moveItem, removeItem, setItemPrescription, validatePrescription,
@@ -121,7 +122,7 @@ export function RoutineEditor() {
     <section>
       <h2>Edit routine</h2>
 
-      {error && <p role="alert">{error}</p>}
+      <WriteErrorAlert error={error} />
       {prescriptionError && <p role="alert">{prescriptionError}</p>}
 
       <label>

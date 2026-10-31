@@ -3,10 +3,14 @@ import { Link } from 'react-router-dom';
 import { useLiveQuery } from 'dexie-react-hooks';
 import { archiveRoutine, createRoutine, listRoutines, unarchiveRoutine } from '../../db/routines';
 import { useWriteError } from '../useWriteError';
+import { WriteErrorAlert } from '../WriteErrorAlert';
 
 export function RoutinesScreen() {
   const [name, setName] = useState('');
-  const [error, setError] = useState<string | null>(null);
+  // Create and archive share one error surface; restoring has its own, shown
+  // down in the Archived section where the Restore buttons are.
+  const { error, run } = useWriteError();
+  const { error: restoreError, run: runRestore } = useWriteError();
   const routines = useLiveQuery(() => listRoutines(), []);
   // Separate live query, not a filter over `routines` above: that query
   // deliberately excludes archived rows, so restoring a routine needs its
@@ -15,26 +19,16 @@ export function RoutinesScreen() {
     () => listRoutines({ includeArchived: true }).then((all) => all.filter((r) => r.isArchived)),
     [],
   );
-  const { error: restoreError, run } = useWriteError();
 
   async function handleSubmit(event: FormEvent) {
     event.preventDefault();
-    setError(null);
-    try {
-      await createRoutine(name);
-      setName('');
-    } catch (e: unknown) {
-      setError(e instanceof Error ? e.message : String(e));
-    }
+    // The name clears only once the routine is saved, so a failed create
+    // (a full disk especially) leaves what the user typed in the field.
+    if (await run(() => createRoutine(name))) setName('');
   }
 
   async function handleArchive(id: string) {
-    setError(null);
-    try {
-      await archiveRoutine(id);
-    } catch (e: unknown) {
-      setError(e instanceof Error ? e.message : String(e));
-    }
+    await run(() => archiveRoutine(id));
   }
 
   return (
@@ -42,7 +36,7 @@ export function RoutinesScreen() {
       <h2>Routines</h2>
 
       <form onSubmit={handleSubmit}>
-        {error && <p role="alert">{error}</p>}
+        <WriteErrorAlert error={error} />
         <label>
           New routine name
           <input value={name} onChange={(e) => setName(e.target.value)} />
@@ -83,7 +77,7 @@ export function RoutinesScreen() {
             Restoring a routine does not put it back in your rotation — add it
             again from Rotation if you want it there.
           </p>
-          {restoreError && <p role="alert">{restoreError}</p>}
+          <WriteErrorAlert error={restoreError} />
           <ul className="archived-routine-list">
             {archivedRoutines.map((routine) => (
               <li key={routine.id}>
@@ -91,7 +85,7 @@ export function RoutinesScreen() {
                 <button
                   type="button"
                   aria-label={`Restore ${routine.name}`}
-                  onClick={() => run(() => unarchiveRoutine(routine.id))}
+                  onClick={() => runRestore(() => unarchiveRoutine(routine.id))}
                 >
                   Restore
                 </button>

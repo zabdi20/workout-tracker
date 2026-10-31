@@ -1,4 +1,4 @@
-import { render, screen, waitFor } from '@testing-library/react';
+import { render, screen, waitFor, within } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
 import { MemoryRouter, Route, Routes } from 'react-router-dom';
 import { resetDbForTests } from '../../db/db';
@@ -6,6 +6,7 @@ import { createCustomExercise } from '../../db/exercises';
 import { createRoutine, setRoutineItems } from '../../db/routines';
 import { startSession } from '../../db/sessions';
 import { listSetsForSession, logSet } from '../../db/sets';
+import { STORAGE_FULL_MESSAGE } from '../useWriteError';
 import { ActiveSessionScreen } from './ActiveSessionScreen';
 import { REST_TIMER_KEY } from './restTimerStore';
 import { unlockRestTone } from './restTone';
@@ -35,6 +36,10 @@ beforeEach(async () => {
   await resetDbForTests();
   // The rest timer lives in localStorage, which jsdom keeps between tests.
   localStorage.clear();
+});
+
+afterEach(() => {
+  vi.restoreAllMocks();
 });
 
 function renderScreen() {
@@ -661,6 +666,49 @@ it('unlocks the rest tone before writing the confirmed set', async () => {
   expect(vi.mocked(unlockRestTone).mock.invocationCallOrder[0]).toBeLessThan(
     vi.mocked(logSet).mock.invocationCallOrder[0],
   );
+});
+
+it('offers a backup when storage is full, keeping what was typed', async () => {
+  const user = userEvent.setup();
+  const { routine } = await benchRoutine('Push A', 2);
+  await startSession(routine);
+  vi.mocked(logSet).mockRejectedValueOnce(new DOMException('full', 'QuotaExceededError'));
+
+  renderScreen();
+
+  const weightInput = await screen.findByLabelText(/weight for set 1/i);
+  const repsInput = screen.getByLabelText(/reps for set 1/i);
+  await user.type(weightInput, '135');
+  await user.type(repsInput, '8');
+  await user.click(screen.getByRole('button', { name: /log set 1/i }));
+
+  const alert = await screen.findByRole('alert');
+  expect(alert).toHaveTextContent(STORAGE_FULL_MESSAGE);
+  expect(within(alert).getByRole('button', { name: 'Back up now' })).toBeInTheDocument();
+  expect(weightInput).toHaveValue(135);
+  expect(repsInput).toHaveValue(8);
+});
+
+it('offers a backup when storage is full on a routine with no exercises', async () => {
+  const user = userEvent.setup();
+  const { routine } = await benchRoutine('Push A', 3);
+  await startSession(routine);
+  await setRoutineItems(routine.id, []);
+  const sessions = await import('../../db/sessions');
+  const finish = vi.spyOn(sessions, 'finishSession')
+    .mockRejectedValueOnce(new DOMException('full', 'QuotaExceededError'));
+
+  renderScreen();
+  expect(await screen.findByText(/no exercises/i)).toBeInTheDocument();
+  await user.click(screen.getByRole('button', { name: /finish workout/i }));
+
+  const alert = await screen.findByRole('alert');
+  expect(alert).toHaveTextContent(STORAGE_FULL_MESSAGE);
+  expect(within(alert).getByRole('button', { name: 'Back up now' })).toBeInTheDocument();
+  expect(finish).toHaveBeenCalledOnce();
+  // A failed finish leaves the session open and the user on this screen.
+  expect(screen.queryByText('Today screen')).toBeNull();
+  expect(screen.getByRole('button', { name: /finish workout/i })).toBeInTheDocument();
 });
 
 it('does not start rest when the set failed to save', async () => {

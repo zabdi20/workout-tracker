@@ -1,6 +1,8 @@
 import { useEffect, useState } from 'react';
 import { NavLink, Outlet } from 'react-router-dom';
 import { prepareLibrary } from '../db/seed';
+import { STORAGE_FULL_MESSAGE, isQuotaError } from './useWriteError';
+import { WriteErrorAlert } from './WriteErrorAlert';
 
 const TABS = [
   { to: '/', label: 'Today', end: true },
@@ -13,6 +15,9 @@ const TABS = [
 export function AppLayout() {
   const [ready, setReady] = useState(false);
   const [error, setError] = useState<string | null>(null);
+  // Kept apart from `error`: a full disk is not "could not open the database",
+  // and the user's way out of it is a backup, which the other failures lack.
+  const [storageFull, setStorageFull] = useState(false);
 
   useEffect(() => {
     let cancelled = false;
@@ -21,7 +26,9 @@ export function AppLayout() {
       .catch((e: unknown) => {
         // Failing loudly matters here: a silent failure would leave the app
         // looking functional while writing to nothing.
-        if (!cancelled) setError(e instanceof Error ? e.message : String(e));
+        if (cancelled) return;
+        if (isQuotaError(e)) setStorageFull(true);
+        else setError(e instanceof Error ? e.message : String(e));
       });
     return () => { cancelled = true; };
   }, []);
@@ -33,12 +40,13 @@ export function AppLayout() {
       </header>
 
       <main>
+        {storageFull && <WriteErrorAlert error={STORAGE_FULL_MESSAGE} />}
         {error && (
           <p role="alert">
             Could not open the database: {error}. Training data cannot be saved.
           </p>
         )}
-        {!error && !ready && <p>Preparing your exercise library…</p>}
+        {!error && !storageFull && !ready && <p>Preparing your exercise library…</p>}
         {ready && <Outlet />}
       </main>
 

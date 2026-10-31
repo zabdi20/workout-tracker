@@ -1,15 +1,20 @@
-import { render, screen, waitFor } from '@testing-library/react';
+import { render, screen, waitFor, within } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
-import { resetDbForTests } from '../../db/db';
+import { db, resetDbForTests } from '../../db/db';
 import {
   createCustomExercise, listExercises, getExercise, updateExercise,
 } from '../../db/exercises';
 import { prepareLibrary } from '../../db/seed';
 import type { Exercise } from '../../db/types';
+import { STORAGE_FULL_MESSAGE } from '../useWriteError';
 import { CustomExerciseForm } from './CustomExerciseForm';
 
 beforeEach(async () => {
   await resetDbForTests();
+});
+
+afterEach(() => {
+  vi.restoreAllMocks();
 });
 
 async function fillRequired(user: ReturnType<typeof userEvent.setup>, name: string) {
@@ -156,6 +161,63 @@ it('surfaces an error and does not close the form when reset fails', async () =>
 
   expect(await screen.findByRole('alert')).toHaveTextContent(/bundled/i);
   expect(onDone).not.toHaveBeenCalled();
+});
+
+it('offers a backup when storage is full, keeping what was typed', async () => {
+  const user = userEvent.setup();
+  const onDone = vi.fn();
+  vi.spyOn(db.exercises, 'add').mockRejectedValueOnce(new DOMException('full', 'QuotaExceededError'));
+  render(<CustomExerciseForm onDone={onDone} onCancel={vi.fn()} />);
+
+  await fillRequired(user, 'Hammer Strength Row');
+  await user.click(screen.getByRole('button', { name: /save/i }));
+
+  const alert = await screen.findByRole('alert');
+  expect(alert).toHaveTextContent(STORAGE_FULL_MESSAGE);
+  expect(within(alert).getByRole('button', { name: 'Back up now' })).toBeInTheDocument();
+  expect(screen.getByLabelText(/exercise name/i)).toHaveValue('Hammer Strength Row');
+  expect(onDone).not.toHaveBeenCalled();
+});
+
+it('offers a backup when storage is full while editing', async () => {
+  const user = userEvent.setup();
+  const existing = await createCustomExercise({
+    name: 'Cable Fly', primaryMuscles: ['chest'], secondaryMuscles: [],
+    equipment: 'cable', measurementType: 'weight_reps',
+  });
+  const onDone = vi.fn();
+  vi.spyOn(db.exercises, 'update').mockRejectedValueOnce(new DOMException('full', 'QuotaExceededError'));
+  render(<CustomExerciseForm existing={existing} onDone={onDone} onCancel={vi.fn()} />);
+
+  const nameField = screen.getByLabelText(/exercise name/i);
+  await user.clear(nameField);
+  await user.type(nameField, 'Low Cable Fly');
+  await user.click(screen.getByRole('button', { name: /save/i }));
+
+  const alert = await screen.findByRole('alert');
+  expect(alert).toHaveTextContent(STORAGE_FULL_MESSAGE);
+  expect(within(alert).getByRole('button', { name: 'Back up now' })).toBeInTheDocument();
+  expect(screen.getByLabelText(/exercise name/i)).toHaveValue('Low Cable Fly');
+  expect(onDone).not.toHaveBeenCalled();
+});
+
+it('offers a backup when storage is full while archiving', async () => {
+  const user = userEvent.setup();
+  const existing = await createCustomExercise({
+    name: 'Cable Fly', primaryMuscles: ['chest'], secondaryMuscles: [],
+    equipment: 'cable', measurementType: 'weight_reps',
+  });
+  const onDone = vi.fn();
+  vi.spyOn(db.exercises, 'update').mockRejectedValueOnce(new DOMException('full', 'QuotaExceededError'));
+  render(<CustomExerciseForm existing={existing} onDone={onDone} onCancel={vi.fn()} />);
+
+  await user.click(screen.getByRole('button', { name: /archive/i }));
+
+  const alert = await screen.findByRole('alert');
+  expect(alert).toHaveTextContent(STORAGE_FULL_MESSAGE);
+  expect(within(alert).getByRole('button', { name: 'Back up now' })).toBeInTheDocument();
+  expect(onDone).not.toHaveBeenCalled();
+  expect((await getExercise(existing.id))?.isArchived).toBe(false);
 });
 
 it('waits for the archive write before closing the form', async () => {

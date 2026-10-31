@@ -1,12 +1,17 @@
-import { render, screen } from '@testing-library/react';
+import { render, screen, within } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
 import { resetDbForTests } from '../../db/db';
 import { createRoutine } from '../../db/routines';
 import { getOrCreateActiveCycle, saveCycle } from '../../db/cycles';
+import { STORAGE_FULL_MESSAGE } from '../useWriteError';
 import { CycleEditor } from './CycleEditor';
 
 beforeEach(async () => {
   await resetDbForTests();
+});
+
+afterEach(() => {
+  vi.restoreAllMocks();
 });
 
 it('shows an alert instead of a permanent loading state when bootstrap fails', async () => {
@@ -18,6 +23,37 @@ it('shows an alert instead of a permanent loading state when bootstrap fails', a
 
   expect(await screen.findByRole('alert')).toHaveTextContent(/disk on fire/i);
   spy.mockRestore();
+});
+
+it('offers a backup when storage is full while the rotation is first created', async () => {
+  const cycles = await import('../../db/cycles');
+  vi.spyOn(cycles, 'getOrCreateActiveCycle')
+    .mockRejectedValueOnce(new DOMException('full', 'QuotaExceededError'));
+
+  render(<CycleEditor />);
+
+  const alert = await screen.findByRole('alert');
+  expect(alert).toHaveTextContent(STORAGE_FULL_MESSAGE);
+  expect(within(alert).getByRole('button', { name: 'Back up now' })).toBeInTheDocument();
+});
+
+it('offers a backup beside the rotation when storage is full while changing it', async () => {
+  const user = userEvent.setup();
+  await createRoutine('Push Day');
+  const cycles = await import('../../db/cycles');
+  render(<CycleEditor />);
+  await screen.findByRole('button', { name: /add push day to rotation/i });
+  vi.spyOn(cycles, 'saveCycle')
+    .mockRejectedValueOnce(new DOMException('full', 'QuotaExceededError'));
+
+  await user.click(screen.getByRole('button', { name: /add push day to rotation/i }));
+
+  const alert = await screen.findByRole('alert');
+  expect(alert).toHaveTextContent(STORAGE_FULL_MESSAGE);
+  expect(within(alert).getByRole('button', { name: 'Back up now' })).toBeInTheDocument();
+  // The inline site, not the early return: the rotation is still on screen.
+  expect(screen.getByRole('heading', { name: 'Add to rotation' })).toBeInTheDocument();
+  expect(screen.getByText('Nothing in the rotation yet.')).toBeInTheDocument();
 });
 
 it('tells the user when no routines exist yet', async () => {

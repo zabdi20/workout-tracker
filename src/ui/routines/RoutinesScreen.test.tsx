@@ -1,12 +1,17 @@
-import { render, screen } from '@testing-library/react';
+import { render, screen, within } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
 import { MemoryRouter } from 'react-router-dom';
-import { resetDbForTests } from '../../db/db';
+import { db, resetDbForTests } from '../../db/db';
 import { archiveRoutine, createRoutine, listRoutines, setRoutineItems } from '../../db/routines';
+import { STORAGE_FULL_MESSAGE } from '../useWriteError';
 import { RoutinesScreen } from './RoutinesScreen';
 
 beforeEach(async () => {
   await resetDbForTests();
+});
+
+afterEach(() => {
+  vi.restoreAllMocks();
 });
 
 function renderScreen() {
@@ -126,4 +131,42 @@ it('surfaces an archive failure instead of failing silently', async () => {
 
   expect(await screen.findByRole('alert')).toHaveTextContent(/quota exceeded/i);
   spy.mockRestore();
+});
+
+it('offers a backup when storage is full, keeping the typed name', async () => {
+  const user = userEvent.setup();
+  vi.spyOn(db.routines, 'add').mockRejectedValueOnce(new DOMException('full', 'QuotaExceededError'));
+  renderScreen();
+  await user.type(screen.getByLabelText('New routine name'), 'Upper A');
+  await user.click(screen.getByRole('button', { name: 'Add routine' }));
+  const alert = await screen.findByRole('alert');
+  expect(alert).toHaveTextContent(STORAGE_FULL_MESSAGE);
+  expect(within(alert).getByRole('button', { name: 'Back up now' })).toBeInTheDocument();
+  expect(screen.getByLabelText('New routine name')).toHaveValue('Upper A');
+});
+
+it('offers a backup when storage is full while archiving', async () => {
+  const user = userEvent.setup();
+  await createRoutine('Push Day');
+  vi.spyOn(db.routines, 'update').mockRejectedValueOnce(new DOMException('full', 'QuotaExceededError'));
+  renderScreen();
+  await screen.findByRole('link', { name: /push day/i });
+  await user.click(screen.getByRole('button', { name: 'Archive Push Day' }));
+  const alert = await screen.findByRole('alert');
+  expect(alert).toHaveTextContent(STORAGE_FULL_MESSAGE);
+  expect(within(alert).getByRole('button', { name: 'Back up now' })).toBeInTheDocument();
+  expect(screen.getByRole('link', { name: /push day/i })).toBeInTheDocument();
+});
+
+it('offers a backup when storage is full while restoring', async () => {
+  const user = userEvent.setup();
+  const r = await createRoutine('Push Day');
+  await archiveRoutine(r.id);
+  vi.spyOn(db.routines, 'update').mockRejectedValueOnce(new DOMException('full', 'QuotaExceededError'));
+  renderScreen();
+  await screen.findByRole('button', { name: 'Restore Push Day' });
+  await user.click(screen.getByRole('button', { name: 'Restore Push Day' }));
+  const alert = await screen.findByRole('alert');
+  expect(alert).toHaveTextContent(STORAGE_FULL_MESSAGE);
+  expect(within(alert).getByRole('button', { name: 'Back up now' })).toBeInTheDocument();
 });

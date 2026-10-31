@@ -6,6 +6,7 @@ import { listSetsForExercise, listSetsForSession } from '../../db/sets';
 import { listExercises } from '../../db/exercises';
 import { detectAllPrs } from '../../domain/records';
 import { useWriteError } from '../useWriteError';
+import { WriteErrorAlert } from '../WriteErrorAlert';
 import { AddSetForm } from './AddSetForm';
 import { DeleteWorkoutControl } from './DeleteWorkoutControl';
 import { MoveWorkoutControl } from './MoveWorkoutControl';
@@ -99,7 +100,7 @@ export function PastWorkoutScreen() {
   return (
     <section>
       <h2>{session.name}</h2>
-      {error && <p role="alert">{error}</p>}
+      <WriteErrorAlert error={error} />
       <p>
         {`${new Date(session.startedAt).toLocaleString()} · ${formatWorkoutDuration(session.startedAt, session.endedAt)}`}
       </p>

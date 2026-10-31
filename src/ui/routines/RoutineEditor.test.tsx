@@ -1,4 +1,4 @@
-import { render, screen, waitFor } from '@testing-library/react';
+import { render, screen, waitFor, within } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
 import { MemoryRouter, Route, Routes } from 'react-router-dom';
 import { resetDbForTests } from '../../db/db';
@@ -6,6 +6,7 @@ import { createCustomExercise, archiveExercise } from '../../db/exercises';
 import {
   createRoutine, getRoutine, setRoutineItems, updateRoutineItems,
 } from '../../db/routines';
+import { STORAGE_FULL_MESSAGE } from '../useWriteError';
 import { RoutineEditor } from './RoutineEditor';
 
 // Only updateRoutineItems is overridden, and only for the one test that
@@ -223,6 +224,25 @@ it('keeps the typed prescription when the write fails, so the user can retry it'
   expect(await screen.findByRole('alert')).toHaveTextContent(/quota exceeded/i);
   expect(sets).toHaveValue(4);
   expect((await getRoutine(routine.id))?.items[0].targetSets).toBeUndefined();
+});
+
+it('offers a backup when storage is full, keeping the typed prescription', async () => {
+  const user = userEvent.setup();
+  const ex = await seedExercise('Barbell Bench Press');
+  const routine = await createRoutine('Push A');
+  await setRoutineItems(routine.id, [{ id: 'i1', exerciseId: ex.id, order: 0 }]);
+  vi.mocked(updateRoutineItems).mockRejectedValueOnce(new DOMException('full', 'QuotaExceededError'));
+
+  renderAt(routine.id);
+
+  const sets = await screen.findByLabelText(/^sets for barbell bench press/i);
+  await user.type(sets, '4');
+  await user.tab();
+
+  const alert = await screen.findByRole('alert');
+  expect(alert).toHaveTextContent(STORAGE_FULL_MESSAGE);
+  expect(within(alert).getByRole('button', { name: 'Back up now' })).toBeInTheDocument();
+  expect(sets).toHaveValue(4);
 });
 
 it('marks an archived exercise so it is not mistaken for an active one', async () => {

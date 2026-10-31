@@ -6,6 +6,8 @@ import {
 import {
   EQUIPMENT_TYPES, MUSCLE_GROUPS, equipmentLabel, muscleLabel,
 } from '../../domain/labels';
+import { useWriteError } from '../useWriteError';
+import { WriteErrorAlert } from '../WriteErrorAlert';
 
 const MEASUREMENT_TYPES: Array<[MeasurementType, string]> = [
   ['weight_reps', 'Weight × reps'],
@@ -31,22 +33,19 @@ export function CustomExerciseForm({ existing, onDone, onCancel }: Props) {
   const [measurementType, setMeasurementType] = useState<MeasurementType>(
     existing?.measurementType ?? 'weight_reps',
   );
-  const [error, setError] = useState<string | null>(null);
+  // One error surface for the whole form. The validation checks throw inside
+  // `run` rather than setting a message of their own, so a bad field and a
+  // failed write show in the same place. `onDone` runs only when `run`
+  // resolves true: a failed save (a full disk especially) must leave the form
+  // open with what the user typed still in it.
+  const { error, run } = useWriteError();
 
   async function handleSubmit(event: FormEvent) {
     event.preventDefault();
-    setError(null);
+    const saved = await run(async () => {
+      if (!name.trim()) throw new Error('Exercise name is required');
+      if (!primary) throw new Error('A primary muscle is required');
 
-    if (!name.trim()) {
-      setError('Exercise name is required');
-      return;
-    }
-    if (!primary) {
-      setError('A primary muscle is required');
-      return;
-    }
-
-    try {
       if (existing) {
         await updateExercise(existing.id, {
           name: name.trim(),
@@ -63,44 +62,25 @@ export function CustomExerciseForm({ existing, onDone, onCancel }: Props) {
           measurementType,
         });
       }
-      onDone();
-    } catch (e: unknown) {
-      setError(e instanceof Error ? e.message : String(e));
-    }
+    });
+    if (saved) onDone();
   }
 
-  // Both writes below used to have no try/catch: a rejection became an
-  // unhandled promise rejection and left the form open with no explanation.
-  // This form already owned an `error` state (used by handleSubmit), so
-  // they reuse it rather than introducing a second error surface inside one
-  // component.
   async function handleArchive() {
     if (!existing) return;
-    setError(null);
-    try {
-      await archiveExercise(existing.id);
-      onDone();
-    } catch (e: unknown) {
-      setError(e instanceof Error ? e.message : String(e));
-    }
+    if (await run(() => archiveExercise(existing.id))) onDone();
   }
 
   async function handleReset() {
     if (!existing) return;
-    setError(null);
-    try {
-      await resetExerciseToBundled(existing.id);
-      onDone();
-    } catch (e: unknown) {
-      setError(e instanceof Error ? e.message : String(e));
-    }
+    if (await run(() => resetExerciseToBundled(existing.id))) onDone();
   }
 
   return (
     <form onSubmit={handleSubmit}>
       <h3>{existing ? 'Edit exercise' : 'New exercise'}</h3>
 
-      {error && <p role="alert">{error}</p>}
+      <WriteErrorAlert error={error} />
 
       <label>
         Exercise name

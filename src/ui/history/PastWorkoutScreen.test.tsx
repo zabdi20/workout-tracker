@@ -8,6 +8,7 @@ import { addForgottenSet, listSetsForSession, updateSet } from '../../db/sets';
 import { DAY, MIN, T, seedExercise, seedWorkout } from '../../testFixtures';
 import { PastWorkoutScreen } from './PastWorkoutScreen';
 import { fromDateTimeLocalValue, toDateTimeLocalValue } from './format';
+import { STORAGE_FULL_MESSAGE } from '../useWriteError';
 
 // Only updateSet, addForgottenSet, moveSession and deleteCompletedSession are
 // overridden, and only for the tests that need to watch a call or make one
@@ -203,6 +204,24 @@ it('keeps what was typed when saving a set fails', async () => {
   // Re-queried from the live document, not through `form` from before Save:
   // React detaches an unmounted subtree intact, so that node would still hold
   // the typed 9 even if the form had closed on failure.
+  expect(
+    within(screen.getByRole('form', { name: 'Edit Barbell Bench Press set 1' })).getByLabelText(/reps/i),
+  ).toHaveValue(9);
+});
+
+it('offers a backup when storage is full while saving a set', async () => {
+  const user = userEvent.setup();
+  const { w } = await benchWorkout();
+  vi.mocked(updateSet).mockRejectedValueOnce(new DOMException('full', 'QuotaExceededError'));
+  renderAt(`/history/${w.id}`);
+  await user.click(await screen.findByRole('button', { name: 'Edit Barbell Bench Press set 1' }));
+  const form = screen.getByRole('form', { name: 'Edit Barbell Bench Press set 1' });
+  await user.clear(within(form).getByLabelText(/reps/i));
+  await user.type(within(form).getByLabelText(/reps/i), '9');
+  await user.click(within(form).getByRole('button', { name: 'Save' }));
+  const alert = await screen.findByRole('alert');
+  expect(alert).toHaveTextContent(STORAGE_FULL_MESSAGE);
+  expect(within(alert).getByRole('button', { name: 'Back up now' })).toBeInTheDocument();
   expect(
     within(screen.getByRole('form', { name: 'Edit Barbell Bench Press set 1' })).getByLabelText(/reps/i),
   ).toHaveValue(9);

@@ -7,6 +7,7 @@ import { listExercises } from '../../db/exercises';
 import { getInProgressSession, startSession } from '../../db/sessions';
 import { nextRoutineId, skipNext, cyclePosition } from '../../domain/cycle';
 import { useWriteError } from '../useWriteError';
+import { WriteErrorAlert } from '../WriteErrorAlert';
 import type { Routine } from '../../db/types';
 
 export function TodayScreen() {
@@ -68,7 +69,7 @@ export function TodayScreen() {
       return (
         <section>
           <h2>Today</h2>
-          <p role="alert">{error}</p>
+          <WriteErrorAlert error={error} />
         </section>
       );
     }
@@ -119,7 +120,7 @@ export function TodayScreen() {
         </>
       )}
 
-      {error && <p role="alert">{error}</p>}
+      <WriteErrorAlert error={error} />
 
       {inProgress ? (
         <p>

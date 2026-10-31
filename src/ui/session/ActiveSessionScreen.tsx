@@ -9,6 +9,7 @@ import {
   deleteSet, lastPerformance, listSetsForExercise, listSetsForSession, logSet,
 } from '../../db/sets';
 import { useWriteError } from '../useWriteError';
+import { WriteErrorAlert } from '../WriteErrorAlert';
 import {
   formatDuration, formatSet, measurementFields, parseSetFields,
 } from '../../domain/measurement';
@@ -220,7 +221,7 @@ export function ActiveSessionScreen() {
     return (
       <section>
         <h2>{session.name}</h2>
-        {error && <p role="alert">{error}</p>}
+        <WriteErrorAlert error={error} />
         {restBanner}
         <p className="empty">This routine has no exercises.</p>
         {sessionControls}
@@ -239,7 +240,7 @@ export function ActiveSessionScreen() {
     return (
       <section>
         <h2>{session.name}</h2>
-        {error && <p role="alert">{error}</p>}
+        <WriteErrorAlert error={error} />
         {restBanner}
         <p>That exercise is no longer in the library.</p>
         {sessionControls}
@@ -348,7 +349,7 @@ export function ActiveSessionScreen() {
   return (
     <section>
       <h2>{session.name}</h2>
-      {error && <p role="alert">{error}</p>}
+      <WriteErrorAlert error={error} />
       {restBanner}
 
       <nav aria-label="Exercises in this session">

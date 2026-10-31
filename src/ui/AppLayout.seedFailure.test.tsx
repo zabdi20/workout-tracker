@@ -1,7 +1,8 @@
-import { render, screen } from '@testing-library/react';
+import { render, screen, within } from '@testing-library/react';
 import { MemoryRouter, Route, Routes } from 'react-router-dom';
 import { prepareLibrary } from '../db/seed';
 import { AppLayout } from './AppLayout';
+import { STORAGE_FULL_MESSAGE } from './useWriteError';
 
 // This file mocks '../db/seed' for the whole module, which is why the
 // seed-failure test lives here instead of in AppLayout.test.tsx: the other
@@ -31,6 +32,20 @@ it('shows an alert and does not render the routed child when seeding fails', asy
 
   const alert = await screen.findByRole('alert');
   expect(alert).toHaveTextContent('disk on fire');
+  expect(alert).toHaveTextContent('Could not open the database');
+  expect(within(alert).queryByRole('button')).toBeNull();
+  expect(screen.queryByText('routines here')).toBeNull();
+});
+
+it('offers a backup when the library cannot be written for lack of space', async () => {
+  vi.mocked(prepareLibrary).mockRejectedValue(new DOMException('full', 'QuotaExceededError'));
+
+  renderAt('/routines');
+
+  const alert = await screen.findByRole('alert');
+  expect(alert).toHaveTextContent(STORAGE_FULL_MESSAGE);
+  expect(alert).not.toHaveTextContent('Could not open the database');
+  expect(within(alert).getByRole('button', { name: 'Back up now' })).toBeInTheDocument();
   expect(screen.queryByText('routines here')).toBeNull();
 });
 

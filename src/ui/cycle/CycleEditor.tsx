@@ -4,6 +4,7 @@ import { getActiveCycle, getOrCreateActiveCycle, saveCycle } from '../../db/cycl
 import { listRoutines } from '../../db/routines';
 import { withoutSlot, moveSlot } from '../../domain/cycle';
 import { useWriteError } from '../useWriteError';
+import { WriteErrorAlert } from '../WriteErrorAlert';
 
 export function CycleEditor() {
   const { error, run } = useWriteError();
@@ -31,7 +32,7 @@ export function CycleEditor() {
       return (
         <section>
           <h2>Rotation</h2>
-          <p role="alert">{error}</p>
+          <WriteErrorAlert error={error} />
         </section>
       );
     }
@@ -44,7 +45,7 @@ export function CycleEditor() {
     <section>
       <h2>Rotation</h2>
 
-      {error && <p role="alert">{error}</p>}
+      <WriteErrorAlert error={error} />
 
       {routines.length === 0 ? (
         <p className="empty">Create a routine first, then order them here.</p>

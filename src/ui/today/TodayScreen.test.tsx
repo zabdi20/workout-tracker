@@ -1,4 +1,4 @@
-import { render, screen } from '@testing-library/react';
+import { render, screen, within } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
 import { MemoryRouter, Route, Routes } from 'react-router-dom';
 import { resetDbForTests } from '../../db/db';
@@ -6,10 +6,15 @@ import { createCustomExercise } from '../../db/exercises';
 import { createRoutine, setRoutineItems } from '../../db/routines';
 import { getOrCreateActiveCycle, saveCycle } from '../../db/cycles';
 import { getInProgressSession, startSession } from '../../db/sessions';
+import { STORAGE_FULL_MESSAGE } from '../useWriteError';
 import { TodayScreen } from './TodayScreen';
 
 beforeEach(async () => {
   await resetDbForTests();
+});
+
+afterEach(() => {
+  vi.restoreAllMocks();
 });
 
 function renderScreen() {
@@ -89,6 +94,39 @@ it('shows an alert instead of a permanent loading state when bootstrap fails', a
 
   expect(await screen.findByRole('alert')).toHaveTextContent(/disk on fire/i);
   spy.mockRestore();
+});
+
+it('offers a backup when storage is full while the rotation is first created', async () => {
+  const cycles = await import('../../db/cycles');
+  vi.spyOn(cycles, 'getOrCreateActiveCycle')
+    .mockRejectedValueOnce(new DOMException('full', 'QuotaExceededError'));
+
+  renderScreen();
+
+  const alert = await screen.findByRole('alert');
+  expect(alert).toHaveTextContent(STORAGE_FULL_MESSAGE);
+  expect(within(alert).getByRole('button', { name: 'Back up now' })).toBeInTheDocument();
+});
+
+it('offers a backup beside the routine when storage is full while skipping it', async () => {
+  const user = userEvent.setup();
+  const a = await createRoutine('Push Day');
+  const b = await createRoutine('Pull Day');
+  const c = await getOrCreateActiveCycle();
+  await saveCycle({ ...c, routineIds: [a.id, b.id], currentIndex: 0 });
+  const cycles = await import('../../db/cycles');
+  renderScreen();
+  await screen.findByText('Push Day');
+  vi.spyOn(cycles, 'saveCycle')
+    .mockRejectedValueOnce(new DOMException('full', 'QuotaExceededError'));
+
+  await user.click(screen.getByRole('button', { name: /skip/i }));
+
+  const alert = await screen.findByRole('alert');
+  expect(alert).toHaveTextContent(STORAGE_FULL_MESSAGE);
+  expect(within(alert).getByRole('button', { name: 'Back up now' })).toBeInTheDocument();
+  // The inline site, not the early return: the routine is still on screen.
+  expect(screen.getByText('Push Day')).toBeInTheDocument();
 });
 
 it('says the routine is empty rather than showing nothing', async () => {
