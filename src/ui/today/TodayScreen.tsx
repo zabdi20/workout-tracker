@@ -4,11 +4,34 @@ import { useLiveQuery } from 'dexie-react-hooks';
 import { getActiveCycle, getOrCreateActiveCycle, saveCycle } from '../../db/cycles';
 import { getRoutine, listRoutines } from '../../db/routines';
 import { listExercises } from '../../db/exercises';
-import { getInProgressSession, startSession } from '../../db/sessions';
+import { getInProgressSession, listCompletedSessions, startSession } from '../../db/sessions';
+import { getSettings } from '../../db/settings';
+import { backupReminder } from '../../domain/backupReminder';
 import { nextRoutineId, skipNext, cyclePosition } from '../../domain/cycle';
+import { BackupButton } from '../backup/BackupButton';
 import { useWriteError } from '../useWriteError';
 import { WriteErrorAlert } from '../WriteErrorAlert';
 import type { Routine } from '../../db/types';
+
+/**
+ * Nothing when no backup is due. There is no dismiss: the reminder goes when a
+ * backup is recorded, which re-runs Today's query. That unmounts the button
+ * before its own "Backup saved." shows, and the reminder going is the
+ * confirmation.
+ */
+function BackupReminder({ due }: { due: ReturnType<typeof backupReminder> }) {
+  if (due.kind === 'none') return null;
+  return (
+    <div role="status">
+      {due.kind === 'never' ? (
+        <p>You haven't backed up yet.</p>
+      ) : (
+        <p>Last backup was {due.days} days ago.</p>
+      )}
+      <BackupButton />
+    </div>
+  );
+}
 
 export function TodayScreen() {
   const { error, run } = useWriteError();
@@ -31,7 +54,10 @@ export function TodayScreen() {
     // would flash stale UI every time the data changes.
     const inProgress = await getInProgressSession();
     const routines = await listRoutines();
-    return { cycle, routine, inProgress, routines };
+    // Also read-only, for the backup reminder.
+    const lastBackupAt = (await getSettings()).lastBackupAt;
+    const completedStarts = (await listCompletedSessions()).map((s) => s.startedAt);
+    return { cycle, routine, inProgress, routines, lastBackupAt, completedStarts };
   }, []);
   const exercises = useLiveQuery(() => listExercises({ includeArchived: true }), []);
 
@@ -75,11 +101,15 @@ export function TodayScreen() {
     }
     return <p>Loading…</p>;
   }
-  const { cycle, routine, inProgress, routines } = data;
+  const { cycle, routine, inProgress, routines, lastBackupAt, completedStarts } = data;
+  // The real clock, read at render rather than in the querier, which only
+  // re-runs when the data changes.
+  const due = backupReminder(lastBackupAt, completedStarts, Date.now());
 
   if (cycle.routineIds.length === 0) {
     return (
       <section>
+        <BackupReminder due={due} />
         <h2>Today</h2>
         <p className="empty">
           Nothing in your rotation yet. <Link to="/cycle">Build one</Link> to see
@@ -94,6 +124,7 @@ export function TodayScreen() {
 
   return (
     <section>
+      <BackupReminder due={due} />
       <h2>Today</h2>
 
       <p className="cycle-position">

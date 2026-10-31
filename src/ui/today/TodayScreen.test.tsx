@@ -6,6 +6,8 @@ import { createCustomExercise } from '../../db/exercises';
 import { createRoutine, setRoutineItems } from '../../db/routines';
 import { getOrCreateActiveCycle, saveCycle } from '../../db/cycles';
 import { getInProgressSession, startSession } from '../../db/sessions';
+import { updateSettings } from '../../db/settings';
+import { DAY, seedWorkout } from '../../testFixtures';
 import { STORAGE_FULL_MESSAGE } from '../useWriteError';
 import { TodayScreen } from './TodayScreen';
 
@@ -215,4 +217,58 @@ it('surfaces a refusal to start rather than failing silently', async () => {
   await user.click(await screen.findByRole('button', { name: /^leg day$/i }));
 
   expect(await screen.findByRole('alert')).toHaveTextContent(/already in progress/i);
+});
+
+// The backup reminder reads the real clock at render, so these times are
+// relative to Date.now() rather than to the fixed T the other screens use.
+
+async function seedRotation() {
+  const routine = await createRoutine('Push Day');
+  const cycle = await getOrCreateActiveCycle();
+  await saveCycle({ ...cycle, routineIds: [routine.id], currentIndex: 0 });
+}
+
+it('reminds when the first workout is over two weeks old and there is no backup', async () => {
+  await seedRotation();
+  await seedWorkout({ startedAt: Date.now() - 15 * DAY });
+
+  renderScreen();
+
+  expect(await screen.findByText("You haven't backed up yet.")).toBeInTheDocument();
+  expect(screen.getByRole('button', { name: 'Back up now' })).toBeInTheDocument();
+});
+
+it('says how old the last backup is', async () => {
+  await seedRotation();
+  await updateSettings({ lastBackupAt: Date.now() - 16 * DAY });
+  await seedWorkout({ startedAt: Date.now() - 10 * DAY });
+
+  renderScreen();
+
+  expect(await screen.findByText(/^Last backup was 16 days ago\.$/)).toBeInTheDocument();
+  expect(screen.getByRole('button', { name: 'Back up now' })).toBeInTheDocument();
+});
+
+it('shows no reminder when nothing new has been logged', async () => {
+  await seedRotation();
+  await updateSettings({ lastBackupAt: Date.now() - 30 * DAY });
+  await seedWorkout({ startedAt: Date.now() - 31 * DAY });
+
+  renderScreen();
+
+  // Wait for the screen itself: the reminder would arrive in the same render,
+  // but a query for its absence passes vacuously while "Loading…" is showing.
+  await screen.findByText('Push Day');
+  expect(screen.queryByText(/backed up|Last backup/)).toBeNull();
+  expect(screen.queryByRole('button', { name: 'Back up now' })).toBeNull();
+});
+
+it('reminds even before a rotation exists', async () => {
+  await seedWorkout({ startedAt: Date.now() - 15 * DAY });
+
+  renderScreen();
+
+  expect(await screen.findByText("You haven't backed up yet.")).toBeInTheDocument();
+  expect(screen.getByRole('button', { name: 'Back up now' })).toBeInTheDocument();
+  expect(screen.getByText(/nothing in your rotation yet/i)).toBeInTheDocument();
 });
