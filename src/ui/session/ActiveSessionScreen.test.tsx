@@ -685,8 +685,12 @@ it('offers a backup when storage is full, keeping what was typed', async () => {
   const alert = await screen.findByRole('alert');
   expect(alert).toHaveTextContent(STORAGE_FULL_MESSAGE);
   expect(within(alert).getByRole('button', { name: 'Back up now' })).toBeInTheDocument();
-  expect(weightInput).toHaveValue(135);
-  expect(repsInput).toHaveValue(8);
+  // Re-queried from the live document, not through `weightInput` and
+  // `repsInput` from before the click: React detaches an unmounted subtree
+  // intact, so those nodes would still hold the typed values even if the row
+  // had remounted on failure and discarded the draft.
+  expect(screen.getByLabelText(/weight for set 1/i)).toHaveValue(135);
+  expect(screen.getByLabelText(/reps for set 1/i)).toHaveValue(8);
 });
 
 it('offers a backup when storage is full on a routine with no exercises', async () => {

@@ -242,7 +242,11 @@ it('offers a backup when storage is full, keeping the typed prescription', async
   const alert = await screen.findByRole('alert');
   expect(alert).toHaveTextContent(STORAGE_FULL_MESSAGE);
   expect(within(alert).getByRole('button', { name: 'Back up now' })).toBeInTheDocument();
-  expect(sets).toHaveValue(4);
+  // Re-queried from the live document, not through `sets` from before the
+  // write: React detaches an unmounted subtree intact, so that node would
+  // still hold the typed 4 even if the field had remounted on failure and
+  // discarded the draft.
+  expect(screen.getByLabelText(/^sets for barbell bench press/i)).toHaveValue(4);
 });
 
 it('marks an archived exercise so it is not mistaken for an active one', async () => {
