@@ -31,3 +31,15 @@ it('routes /history to the History screen', async () => {
     window.history.pushState({}, '', base);
   }
 });
+
+it('routes /settings to the Settings screen', async () => {
+  const base = import.meta.env.BASE_URL;
+  window.history.pushState({}, '', `${base}settings`);
+  try {
+    render(<App />);
+    expect(await screen.findByRole('heading', { name: 'Settings' }, { timeout: 5000 })).toBeInTheDocument();
+    await expect.poll(() => db.exercises.count()).toBeGreaterThan(100);
+  } finally {
+    window.history.pushState({}, '', base);
+  }
+});

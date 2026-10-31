@@ -44,3 +44,8 @@ it('does not mark Today as current when on another route', async () => {
   const today = await screen.findByRole('link', { name: 'Today' });
   expect(today).not.toHaveAttribute('aria-current');
 });
+
+it.each(['/', '/routines'])('opens Settings from the gear on %s', async (path) => {
+  renderAt(path);
+  expect(await screen.findByRole('link', { name: 'Settings' })).toHaveAttribute('href', '/settings');
+});

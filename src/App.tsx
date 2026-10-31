@@ -9,6 +9,7 @@ import { ActiveSessionScreen } from './ui/session/ActiveSessionScreen';
 import { HistoryScreen } from './ui/history/HistoryScreen';
 import { PastWorkoutScreen } from './ui/history/PastWorkoutScreen';
 import { RecordsScreen } from './ui/records/RecordsScreen';
+import { SettingsScreen } from './ui/settings/SettingsScreen';
 
 export function App() {
   return (
@@ -26,6 +27,7 @@ export function App() {
           <Route path="/cycle" element={<CycleEditor />} />
           <Route path="/library" element={<LibraryScreen />} />
           <Route path="/exercises/:exerciseId/records" element={<RecordsScreen />} />
+          <Route path="/settings" element={<SettingsScreen />} />
         </Route>
       </Routes>
     </BrowserRouter>

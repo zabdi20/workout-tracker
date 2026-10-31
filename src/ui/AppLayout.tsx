@@ -1,5 +1,5 @@
 import { useEffect, useState } from 'react';
-import { NavLink, Outlet } from 'react-router-dom';
+import { Link, NavLink, Outlet } from 'react-router-dom';
 import { prepareLibrary } from '../db/seed';
 import { STORAGE_FULL_MESSAGE, isQuotaError } from './useWriteError';
 import { WriteErrorAlert } from './WriteErrorAlert';
@@ -37,6 +37,7 @@ export function AppLayout() {
     <div className="app">
       <header>
         <h1>Workout Tracker</h1>
+        <Link to="/settings" aria-label="Settings">⚙︎</Link>
       </header>
 
       <main>
