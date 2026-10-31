@@ -7,6 +7,7 @@ import { daysAgoLabel } from '../../domain/backupReminder';
 import { BackupButton } from '../backup/BackupButton';
 import { useWriteError } from '../useWriteError';
 import { WriteErrorAlert } from '../WriteErrorAlert';
+import { RestoreControl } from './RestoreControl';
 
 const UNITS: readonly WeightUnit[] = ['lb', 'kg'];
 
@@ -133,7 +134,7 @@ export function SettingsScreen() {
         </p>
       )}
       <BackupButton />
-      {/* The restore control goes here, given `data.inProgress`. */}
+      <RestoreControl inProgress={!!data.inProgress} />
 
       <h3>Storage</h3>
       <p>Protected from iOS clean-up: {protection}</p>

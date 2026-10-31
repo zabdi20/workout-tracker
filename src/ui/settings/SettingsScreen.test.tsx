@@ -3,7 +3,7 @@ import userEvent from '@testing-library/user-event';
 import { MemoryRouter } from 'react-router-dom';
 import { db, resetDbForTests } from '../../db/db';
 import { getSettings, updateSettings } from '../../db/settings';
-import { DAY } from '../../testFixtures';
+import { DAY, seedWorkout, T } from '../../testFixtures';
 import { STORAGE_FULL_MESSAGE } from '../useWriteError';
 import { SettingsScreen } from './SettingsScreen';
 
@@ -208,4 +208,31 @@ it('offers Back up now', async () => {
   renderScreen();
 
   expect(await screen.findByRole('button', { name: 'Back up now' })).toBeInTheDocument();
+});
+
+it('offers to restore a backup from a file', async () => {
+  renderScreen();
+
+  expect(await screen.findByLabelText('Restore from backup…')).toBeInTheDocument();
+});
+
+it('turns restoring off while a workout is in progress', async () => {
+  // Rejects: a restore control that is never told about the workout.
+  await seedWorkout({ startedAt: T, status: 'in_progress', endedAt: null });
+  renderScreen();
+
+  expect(await screen.findByRole('button', { name: 'Restore from backup…' })).toBeDisabled();
+  expect(screen.queryByLabelText('Restore from backup…')).not.toBeInTheDocument();
+});
+
+it('turns restoring off when a workout starts, and on again when it ends', async () => {
+  // Rejects: a control told once, at first render, and never again.
+  renderScreen();
+  expect(await screen.findByLabelText('Restore from backup…')).toBeInTheDocument();
+
+  const workout = await seedWorkout({ startedAt: T, status: 'in_progress', endedAt: null });
+  expect(await screen.findByRole('button', { name: 'Restore from backup…' })).toBeDisabled();
+
+  await db.sessions.update(workout.id, { status: 'completed', endedAt: T + 1000 });
+  expect(await screen.findByLabelText('Restore from backup…')).toBeInTheDocument();
 });
