@@ -9,6 +9,7 @@
  * the phone's copy wins, with a handful of named exceptions.
  */
 import type { Exercise, Settings } from '../db/types';
+import { TABLE_NAMES } from './backupFormat';
 import type { BackupFile, BackupTables } from './backupFormat';
 import { checkReferences } from './backupValidate';
 
@@ -22,7 +23,8 @@ export interface MergeSummary {
   customExercises: number;
   /** Untouched library exercises replaced by the backup's edited copy. */
   libraryEdits: number;
-  /** The phone's name for each custom exercise the backup's history joined. */
+  /** The phone's name for each custom exercise the backup's history joined,
+   *  once per phone exercise even when several backup exercises matched it. */
   matchedExercises: string[];
   /** The phone's own rotation was set aside for the backup's. */
   rotationReplaced: boolean;
@@ -62,17 +64,19 @@ export function sameRow(a: unknown, b: unknown): boolean {
   return JSON.stringify(canonical(a)) === JSON.stringify(canonical(b));
 }
 
-/** Nothing for the confirmation to list: every count is zero, no custom
- *  exercise was matched and no rotation was set aside. */
-export function addsNothing(summary: MergeSummary): boolean {
+/**
+ * True when the plan writes nothing but, possibly, settings: every table in
+ * `put` other than `settings` is empty and no rotation is to be deleted. It
+ * reads the rows, not the summary's counts, which leave out goals, bodyweight
+ * entries and a rotation swap, so it can never say "nothing" about a plan that
+ * would write one of those. A match is named in the summary even when it adds
+ * nothing, and does not count here. Settings are excluded on purpose: a
+ * restore with nothing else to add writes nothing, settings included.
+ */
+export function addsNothing(plan: MergePlan): boolean {
   return (
-    summary.workouts === 0 &&
-    summary.sets === 0 &&
-    summary.routines === 0 &&
-    summary.customExercises === 0 &&
-    summary.libraryEdits === 0 &&
-    summary.matchedExercises.length === 0 &&
-    !summary.rotationReplaced
+    plan.deleteCycleIds.length === 0 &&
+    TABLE_NAMES.every((name) => name === 'settings' || plan.put[name].length === 0)
   );
 }
 
@@ -166,6 +170,8 @@ export function planMerge(phone: BackupTables, backup: BackupFile, bundled: Exer
   const phoneCustoms = phone.exercises.filter((exercise) => exercise.isCustom).sort(preferred);
   /** Backup id -> the phone's id, for each recreated custom exercise. */
   const matched = new Map<string, string>();
+  /** Phone exercises already named in `matchedExercises`. */
+  const named = new Set<string>();
 
   for (const row of file.exercises) {
     const onPhone = phoneExercises.get(row.id);
@@ -181,7 +187,10 @@ export function planMerge(phone: BackupTables, backup: BackupFile, bundled: Exer
       );
       if (match) {
         matched.set(row.id, match.id);
-        summary.matchedExercises.push(match.name);
+        if (!named.has(match.id)) {
+          named.add(match.id);
+          summary.matchedExercises.push(match.name);
+        }
       } else {
         put.exercises.push(row);
         summary.customExercises++;

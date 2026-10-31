@@ -131,10 +131,10 @@ it("keeps the phone's row in every table where both have the id", () => {
     bodyweight: [{ id: 'bw-1', date: T0, weight: 81, unit: 'kg' }],
     goals: [{ ...goalOn('g-1', 'ex-1'), targetValue: 110 }],
   });
-  const { put, deleteCycleIds, summary } = planOf(phone, backup);
-  for (const name of TABLE_NAMES) expect(put[name]).toEqual([]);
-  expect(deleteCycleIds).toEqual([]);
-  expect(addsNothing(summary)).toBe(true);
+  const plan = planOf(phone, backup);
+  for (const name of TABLE_NAMES) expect(plan.put[name]).toEqual([]);
+  expect(plan.deleteCycleIds).toEqual([]);
+  expect(addsNothing(plan)).toBe(true);
 });
 
 it("keeps the rotation when both sides have the same one", () => {
@@ -196,9 +196,9 @@ it("keeps a custom exercise the phone has under the same id", () => {
   // Rejects: replacing any phone exercise that differs, not only untouched library rows.
   const phone = { ...freshPhone(BUNDLED), exercises: [...BUNDLED, exerciseRow({ id: 'ex-1', name: 'Phone name' })] };
   const backup = backupOf({ exercises: [exerciseRow({ id: 'ex-1', name: 'Backup name' })] });
-  const { put, summary } = planOf(phone, backup);
-  expect(put.exercises).toEqual([]);
-  expect(addsNothing(summary)).toBe(true);
+  const plan = planOf(phone, backup);
+  expect(plan.put.exercises).toEqual([]);
+  expect(addsNothing(plan)).toBe(true);
 });
 
 // ---- A recreated custom exercise -------------------------------------------
@@ -298,6 +298,29 @@ it('prefers an unarchived match, then the lowest id', () => {
   expect(summary.matchedExercises).toEqual(['STEP-UP']); // the phone row's own name
 });
 
+it('names a phone exercise once when two backup exercises match it', () => {
+  // Rejects: one line per backup exercise, so the same phone exercise is named twice.
+  const phone = {
+    ...freshPhone(BUNDLED),
+    exercises: [...BUNDLED, exerciseRow({ id: 'new-id', name: 'Step-Up' })],
+  };
+  const backup = backupOf({
+    exercises: [
+      exerciseRow({ id: 'old-1', name: 'step-up' }),
+      exerciseRow({ id: 'old-2', name: ' STEP-UP ' }),
+    ],
+    sessions: [sessionRow({ id: 'w-b' })],
+    sets: [
+      setRow({ id: 's-1', sessionId: 'w-b', exerciseId: 'old-1' }),
+      setRow({ id: 's-2', sessionId: 'w-b', exerciseId: 'old-2' }),
+    ],
+  });
+  const { put, summary } = planOf(phone, backup);
+  expect(put.exercises).toEqual([]);
+  expect(put.sets.map((s) => s.exerciseId)).toEqual(['new-id', 'new-id']); // both histories join
+  expect(summary.matchedExercises).toEqual(['Step-Up']);
+});
+
 // ---- The rotation ----------------------------------------------------------
 
 it('removes the empty rotation a fresh phone starts with', () => {
@@ -349,9 +372,10 @@ it("leaves the phone's rotation active when the backup has none", () => {
   expect(activeIds(applyPlan(phone, plan))).toEqual(['c-fresh']);
 });
 
-it("keeps the phone's copy of the backup's rotation when it was set aside there", () => {
-  // Rejects: the backup's row overwriting a phone row just to make it active
-  // (the phone's copy has moved on to index 5).
+it("makes the phone's own inactive copy of the backup's rotation active, instead of replacing it", () => {
+  // Rejects: the backup's row overwriting the phone's row just to make it
+  // active. The phone's copy (set aside by an earlier restore) has moved on to
+  // index 5; it is put with only isActive flipped to true.
   const phone: BackupTables = {
     ...freshPhone(BUNDLED),
     routines: [routineRow({ id: 'r-main' })],
@@ -368,6 +392,9 @@ it("keeps the phone's copy of the backup's rotation when it was set aside there"
   const merged = applyPlan(phone, plan);
   expect(activeIds(merged)).toEqual(['c-main']);
   expect(merged.cycles.find((c) => c.id === 'c-main')).toEqual(
+    cycleRow({ id: 'c-main', routineIds: ['r-main'], currentIndex: 5, isActive: true }),
+  );
+  expect(plan.put.cycles).toContainEqual(
     cycleRow({ id: 'c-main', routineIds: ['r-main'], currentIndex: 5, isActive: true }),
   );
   expect(plan.summary.rotationReplaced).toBe(true); // c-later had routines
@@ -441,14 +468,51 @@ it('adds nothing when the same file is merged twice', () => {
   const backup = backupFile({ ...fullTables(), exercises: [edited, BUNDLED[1], ...fullTables().exercises] });
 
   const first = planOf(phone, backup);
-  expect(addsNothing(first.summary)).toBe(false); // the first merge really adds
+  expect(addsNothing(first)).toBe(false); // the first merge really adds
   expect(first.summary).toMatchObject({ libraryEdits: 1, rotationReplaced: true });
   const afterFirst = applyPlan(phone, first);
 
   const second = planOf(afterFirst, backup);
-  expect(addsNothing(second.summary)).toBe(true);
+  expect(addsNothing(second)).toBe(true);
   for (const name of TABLE_NAMES) expect(second.put[name]).toEqual([]);
   expect(second.deleteCycleIds).toEqual([]);
+});
+
+it('adds nothing when a file is merged again after a custom exercise was name-matched', () => {
+  // Rejects: counting a match as something added. The match is still named the
+  // second time (the backup's id is still absent from the phone), but nothing is
+  // written.
+  const { phone, backup } = recreated('bodyweight_reps');
+  const first = planOf(phone, backup);
+  expect(addsNothing(first)).toBe(false);
+  const second = planOf(applyPlan(phone, first), backup);
+  expect(second.summary.matchedExercises).toEqual(['Explosive Box Step-Up']);
+  for (const name of TABLE_NAMES) expect(second.put[name]).toEqual([]);
+  expect(addsNothing(second)).toBe(true);
+});
+
+it.each<[string, Partial<BackupTables>]>([
+  ['a goal', { goals: [goalOn('g-b', 'Barbell_Squat')] }],
+  ['a bodyweight entry', { bodyweight: [{ id: 'bw-b', date: T0, weight: 80, unit: 'kg' }] }],
+  ['a rotation replacing the fresh empty one', { cycles: [cycleRow({ id: 'c-main', isActive: true })] }],
+])('does not say it adds nothing when the only new row is %s', (_label, tables) => {
+  // Rejects: judging "adds nothing" from the summary's counts, which have no
+  // count for these. The restore would then write nothing and drop the row.
+  const plan = planOf(freshPhone(BUNDLED), backupOf(tables));
+  expect(plan.summary).toMatchObject({
+    workouts: 0, sets: 0, routines: 0, customExercises: 0, libraryEdits: 0,
+    matchedExercises: [], rotationReplaced: false,
+  });
+  expect(addsNothing(plan)).toBe(false);
+});
+
+it("ignores a settings change on its own, since it is only written along with something else", () => {
+  // Rejects: counting settings as something to write. A restore with nothing
+  // else to add writes nothing, settings included.
+  const backup = backupOf({ settings: [settingsRow({ unitPreference: 'kg', defaultRestSeconds: 150 })] });
+  const plan = planOf(freshPhone(BUNDLED), backup);
+  expect(plan.put.settings).toHaveLength(1); // the plan has a settings row...
+  expect(addsNothing(plan)).toBe(true); // ...and still adds nothing
 });
 
 it('refuses while a workout is in progress on the phone', () => {
@@ -553,19 +617,35 @@ describe('sameRow', () => {
 });
 
 describe('addsNothing', () => {
-  it('is true for an empty summary', () => {
-    expect(addsNothing(summaryOf())).toBe(true);
+  const planWith = (put: Partial<BackupTables>, deleteCycleIds: string[] = [], summary = summaryOf()): MergePlan =>
+    ({ put: { ...emptyTables(), ...put }, deleteCycleIds, summary });
+
+  it('is true when nothing is put and nothing is deleted', () => {
+    expect(addsNothing(planWith({}))).toBe(true);
   });
 
-  it.each<[string, Partial<MergeSummary>]>([
-    ['workouts', { workouts: 1 }],
-    ['sets', { sets: 1 }],
-    ['routines', { routines: 1 }],
-    ['custom exercises', { customExercises: 1 }],
-    ['library edits', { libraryEdits: 1 }],
-    ['a matched exercise', { matchedExercises: ['Step-Up'] }],
-    ['a replaced rotation', { rotationReplaced: true }],
-  ])('is false when there are %s', (_label, over) => {
-    expect(addsNothing(summaryOf(over))).toBe(false);
+  it('is true when only settings are put', () => {
+    expect(addsNothing(planWith({ settings: [settingsRow({ unitPreference: 'kg' })] }))).toBe(true);
+  });
+
+  it('does not read the summary: a match, a count or a replaced rotation with nothing put is still nothing', () => {
+    const summary = summaryOf({ matchedExercises: ['Step-Up'], workouts: 2, rotationReplaced: true });
+    expect(addsNothing(planWith({}, [], summary))).toBe(true);
+  });
+
+  it.each<[string, Partial<BackupTables>]>([
+    ['an exercise', { exercises: [exerciseRow({ id: 'e' })] }],
+    ['a routine', { routines: [routineRow({ id: 'r' })] }],
+    ['a rotation', { cycles: [cycleRow({ id: 'c' })] }],
+    ['a workout', { sessions: [sessionRow({ id: 'w' })] }],
+    ['a set', { sets: [setRow({ id: 's', sessionId: 'w', exerciseId: 'e' })] }],
+    ['a bodyweight entry', { bodyweight: [{ id: 'bw', date: T0, weight: 80, unit: 'kg' }] }],
+    ['a goal', { goals: [goalOn('g', 'e')] }],
+  ])('is false when %s is put', (_label, put) => {
+    expect(addsNothing(planWith(put))).toBe(false);
+  });
+
+  it('is false when a rotation is to be deleted', () => {
+    expect(addsNothing(planWith({}, ['c-fresh']))).toBe(false);
   });
 });
