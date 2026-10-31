@@ -11,3 +11,6 @@ coverage
 .claude/worktrees
 # Brainstorming mockups from the visual companion.
 .superpowers/
+# Playwright output.
+test-results/
+playwright-report/

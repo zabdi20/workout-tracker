@@ -84,6 +84,9 @@ export default defineConfig({
     // A git worktree under .claude/ holds a full copy of src/, so without
     // this every test file is collected twice and the suite reports double
     // its real count — which reads as good news while hiding a failure.
-    exclude: [...configDefaults.exclude, '**/.claude/**'],
+    //
+    // e2e/ belongs to Playwright, which has its own runner and its own `test`.
+    // Left in, Vitest collects the spec and fails on Playwright's `test`.
+    exclude: [...configDefaults.exclude, '**/.claude/**', 'e2e/**'],
   },
 });
